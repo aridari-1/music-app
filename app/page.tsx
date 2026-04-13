@@ -1,5 +1,6 @@
 import SongCard from "@/components/ui/SongCard";
 import { createClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/supabase/admin"; // ✅ NEW
 import { getSongs } from "@/services/songs";
 
 export default async function HomePage() {
@@ -10,7 +11,7 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 🎵 Get songs via service
+  // 🎵 Get songs
   const songs = await getSongs();
 
   // 🎧 Get owned songs
@@ -25,20 +26,27 @@ export default async function HomePage() {
     ownedSongIds = library?.map((item) => item.song_id) || [];
   }
 
-  // 🖼️ Add signed cover URLs
+  // 🖼️ FIXED: Use adminClient for signed URLs
   const songsWithCovers = await Promise.all(
     (songs || []).map(async (song: any) => {
       let cover_signed_url = null;
 
       if (song.cover_url) {
-        const { data } = await supabase.storage
+        const { data, error } = await adminClient.storage
           .from("covers")
           .createSignedUrl(song.cover_url, 3600);
+
+        if (error) {
+          console.error("SIGNED URL ERROR:", error.message);
+        }
 
         cover_signed_url = data?.signedUrl || null;
       }
 
-      return { ...song, cover_signed_url };
+      return {
+        ...song,
+        cover_signed_url,
+      };
     })
   );
 
@@ -47,6 +55,10 @@ export default async function HomePage() {
       <h1 className="text-4xl font-semibold mb-8">
         Discover Music
       </h1>
+
+      {songsWithCovers.length === 0 && (
+        <p className="text-white/50">No songs available.</p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {songsWithCovers.map((song: any) => (
