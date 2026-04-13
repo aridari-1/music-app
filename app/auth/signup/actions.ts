@@ -16,13 +16,14 @@ export async function signUp(formData: FormData) {
     options: {
       data: { role },
 
-      // 🔥 THIS IS THE FIX
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login`,
+      // ✅ FIXED: use real deployed URL + callback
+      emailRedirectTo:
+        "https://music-app-pi-six.vercel.app/auth/callback",
     },
   });
 
   if (error) {
-    redirect(`/auth-error?message=${error.message}`);
+    redirect(`/auth-error?message=${encodeURIComponent(error.message)}`);
   }
 
   redirect("/auth/login?message=Check your email");
