@@ -38,3 +38,19 @@ export async function getAudioUrl(songId: string) {
 
   return data.url;
 }
+export async function searchSongs(query: string) {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+  const data = await res.json();
+  return data.songs || [];
+}
+export async function getTrendingSongs() {
+  const res = await fetch("/api/trending");
+  const data = await res.json();
+  return data.songs || [];
+}
+
+export async function getNewSongs() {
+  const res = await fetch("/api/new");
+  const data = await res.json();
+  return data.songs || [];
+}

@@ -29,6 +29,29 @@ export async function POST(req: Request) {
     );
   }
 
+  // ❗ Validate price
+  if (!song.price || song.price <= 0) {
+    return NextResponse.json(
+      { error: "Invalid song price" },
+      { status: 400 }
+    );
+  }
+
+  // ❌ Prevent duplicate purchase
+  const { data: existing } = await supabase
+    .from("library")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("song_id", songId)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json(
+      { error: "You already own this song" },
+      { status: 400 }
+    );
+  }
+
   const reference = `ref_${Date.now()}_${user.id}`;
 
   // 💰 Initialize Paystack
@@ -42,14 +65,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         email: user.email,
-        amount: song.price * 100, // convert to kobo
+        amount: song.price * 100,
+        currency: "USD",
+
         reference,
 
-        // 🔥 CRITICAL FIX
-        callback_url:
-          "https://music-app-pi-six.vercel.app/api/paystack/verify",
+        callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/paystack/verify`,
 
-        // 🔥 IMPORTANT: MATCH VERIFY FILE
         metadata: {
           userId: user.id,
           songId: songId,
@@ -61,6 +83,7 @@ export async function POST(req: Request) {
   const data = await res.json();
 
   if (!data.status) {
+    console.error("❌ Paystack init error:", data);
     return NextResponse.json(
       { error: "Paystack init failed" },
       { status: 500 }

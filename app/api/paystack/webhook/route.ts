@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      // ✅ Prevent duplicate purchases
+      // ✅ Prevent duplicate
       const { data: existing } = await adminClient
         .from("purchases")
         .select("id")
@@ -47,14 +47,36 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (!existing) {
+        const amount = data.amount / 100;
+
+        // 💰 SPLIT (15% platform / 85% artist)
+        const platformFee = amount * 0.15;
+        const artistAmount = amount * 0.85;
+
+        // 🎵 Get song to retrieve artist_id
+        const { data: song, error: songError } = await adminClient
+          .from("songs")
+          .select("artist_id")
+          .eq("id", songId)
+          .single();
+
+        if (songError || !song) {
+          console.error("❌ Song fetch failed:", songError?.message);
+          return NextResponse.json({ received: true });
+        }
+
         // 💾 Insert purchase
         const { error: purchaseError } = await adminClient
           .from("purchases")
           .insert({
             buyer_id: userId,
             song_id: songId,
-            amount: data.amount / 100,
+            artist_id: song.artist_id,
+            amount,
+            artist_amount: artistAmount,
+            platform_fee: platformFee,
             reference,
+            payout_status: "pending",
           });
 
         if (purchaseError) {
@@ -72,6 +94,8 @@ export async function POST(req: Request) {
         if (libraryError) {
           console.error("❌ Library insert failed:", libraryError.message);
         }
+      } else {
+        console.log("⚠️ Purchase already exists, skipping");
       }
     }
 

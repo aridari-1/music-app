@@ -1,78 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 
 export default function Navbar() {
-  const pathname = usePathname();
-  const { user, role, loading } = useAuth();
-
-  const linkClass = (href: string) =>
-    `text-sm transition hover:text-white ${
-      pathname === href ? "text-white" : "text-white/60"
-    }`;
+  const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 hidden md:block border-b border-white/10 bg-black/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="text-xl font-semibold tracking-tight">
-          Musique
-        </Link>
+    <header className="hidden md:flex items-center justify-between px-8 h-16 border-b border-white/10 bg-black/70 backdrop-blur-xl sticky top-0 z-50">
 
-        <nav className="flex items-center gap-6">
-          <Link href="/" className={linkClass("/")}>
-            Discover
+      {/* LOGO */}
+      <Link href="/" className="text-xl font-semibold tracking-tight">
+        Musique
+      </Link>
+
+      {/* RIGHT SIDE */}
+      <div className="flex items-center gap-4">
+        {user ? (
+          <Link
+            href="/account"
+            className="text-white/80 hover:text-white transition"
+          >
+            Account
           </Link>
-
-          {user && role === "buyer" && (
-            <Link href="/dashboard/buyer" className={linkClass("/dashboard/buyer")}>
-              Library
-            </Link>
-          )}
-
-          {user && role === "artist" && (
-            <>
-              <Link
-                href="/dashboard/artist"
-                className={linkClass("/dashboard/artist")}
-              >
-                Artist Dashboard
-              </Link>
-              <Link href="/upload" className={linkClass("/upload")}>
-                Upload
-              </Link>
-            </>
-          )}
-        </nav>
-
-        <div className="flex items-center gap-3">
-          {loading ? (
-            <div className="h-9 w-24 rounded-xl bg-white/10 animate-pulse" />
-          ) : user ? (
+        ) : (
+          <>
             <Link
-              href={role === "artist" ? "/dashboard/artist" : "/dashboard/buyer"}
-              className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black"
+              href="/auth/login"
+              className="text-white/70 hover:text-white"
             >
-              Dashboard
+              Login
             </Link>
-          ) : (
-            <>
-              <Link
-                href="/auth/login"
-                className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black"
-              >
-                Sign up
-              </Link>
-            </>
-          )}
-        </div>
+            <Link
+              href="/auth/sign-up"
+              className="bg-white text-black px-4 py-2 rounded-xl text-sm"
+            >
+              Sign Up
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );
