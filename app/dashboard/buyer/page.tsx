@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { getUserLibrary } from "@/services/purchases";
 import { createClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/supabase/admin"; // 🔥 IMPORTANT
 import Link from "next/link";
 
 export default async function BuyerDashboard() {
@@ -9,18 +10,22 @@ export default async function BuyerDashboard() {
   // 🔐 Require buyer
   const user = await requireRole("buyer");
 
-  // 📚 Get library via service
+  // 📚 Get library
   const library = await getUserLibrary(user.id);
 
-  // 🖼️ Generate signed cover URLs
+  // 🖼️ Generate signed cover URLs (FIXED)
   const libraryWithCovers = await Promise.all(
     (library || []).map(async (item: any) => {
       let cover_signed_url: string | null = null;
 
       if (item.songs?.cover_url) {
-        const { data } = await supabase.storage
+        const { data, error } = await adminClient.storage
           .from("covers")
-          .createSignedUrl(item.songs.cover_url, 60 * 60);
+          .createSignedUrl(item.songs.cover_url, 3600);
+
+        if (error) {
+          console.error("SIGNED URL ERROR:", error.message);
+        }
 
         cover_signed_url = data?.signedUrl || null;
       }
@@ -66,7 +71,7 @@ export default async function BuyerDashboard() {
                 Purchased
               </p>
 
-              {/* 🎧 LISTEN BUTTON */}
+              {/* 🎧 LISTEN */}
               <Link
                 href={`/song/${item.songs.id}`}
                 className="block text-center bg-white text-black py-2 rounded-lg hover:opacity-90"
