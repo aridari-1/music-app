@@ -1,60 +1,79 @@
-import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth";
+import { getUserLibrary } from "@/services/purchases";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export default async function BuyerDashboard() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // 🔐 Require buyer
+  const user = await requireRole("buyer");
 
-  if (!user) redirect("/auth/login");
+  // 📚 Get library via service
+  const library = await getUserLibrary(user.id);
 
-  // Check role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  // 🖼️ Generate signed cover URLs
+  const libraryWithCovers = await Promise.all(
+    (library || []).map(async (item: any) => {
+      let cover_signed_url: string | null = null;
 
-  if (profile?.role !== "buyer") {
-    redirect("/dashboard");
-  }
+      if (item.songs?.cover_url) {
+        const { data } = await supabase.storage
+          .from("covers")
+          .createSignedUrl(item.songs.cover_url, 60 * 60);
 
-  // Get purchased songs
-  const { data: library } = await supabase
-    .from("library")
-    .select(`
-      id,
-      songs (
-        id,
-        title,
-        cover_url,
-        price
-      )
-    `)
-    .eq("user_id", user.id);
+        cover_signed_url = data?.signedUrl || null;
+      }
+
+      return {
+        ...item,
+        songs: {
+          ...item.songs,
+          cover_signed_url,
+        },
+      };
+    })
+  );
 
   return (
-    <main className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-4xl font-semibold mb-6">Your Library</h1>
+    <main className="min-h-screen bg-black text-white px-6 py-10">
+      <h1 className="text-4xl font-semibold mb-8">Your Library</h1>
 
-      {library?.length === 0 && (
+      {libraryWithCovers.length === 0 && (
         <p className="text-white/50">No songs purchased yet.</p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {library?.map((item: any) => (
-          <div key={item.id} className="bg-white/5 p-4 rounded-xl">
-            <div className="h-40 bg-white/10 rounded mb-3" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {libraryWithCovers.map((item: any) => (
+          <div
+            key={item.id}
+            className="bg-white/5 rounded-2xl overflow-hidden hover:bg-white/10 transition shadow-lg"
+          >
+            {/* 🖼️ COVER */}
+            <img
+              src={item.songs.cover_signed_url || "/placeholder.png"}
+              alt={item.songs.title}
+              className="w-full h-48 object-cover"
+            />
 
-            <p className="font-semibold">{item.songs.title}</p>
+            {/* 🎵 CONTENT */}
+            <div className="p-4">
+              <p className="font-semibold text-lg">
+                {item.songs.title}
+              </p>
 
-            <Link
-              href={`/song/${item.songs.id}`}
-              className="mt-3 inline-block bg-white text-black px-4 py-2 rounded"
-            >
-              ▶ Listen
-            </Link>
+              <p className="text-sm text-white/50 mb-3">
+                Purchased
+              </p>
+
+              {/* 🎧 LISTEN BUTTON */}
+              <Link
+                href={`/song/${item.songs.id}`}
+                className="block text-center bg-white text-black py-2 rounded-lg hover:opacity-90"
+              >
+                ▶ Listen
+              </Link>
+            </div>
           </div>
         ))}
       </div>

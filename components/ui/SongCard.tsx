@@ -1,55 +1,113 @@
 "use client";
 
 import { useState } from "react";
+import { initiatePurchase } from "@/services/purchases";
+import usePlayer from "@/hooks/usePlayer";
 
-export default function SongCard({ song, owned }: any) {
+export default function SongCard({
+  song,
+  owned,
+}: {
+  song: any;
+  owned: boolean;
+}) {
   const [loading, setLoading] = useState(false);
 
+  const { play, pause, currentSongId, loading: playerLoading } =
+    usePlayer();
+
+  const isPlaying = currentSongId === song.id;
+
   const handleBuy = async () => {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await fetch("/api/paystack/init", {
-      method: "POST",
-      body: JSON.stringify({ songId: song.id }),
-    });
+      const url = await initiatePurchase(song.id);
 
-    const data = await res.json();
-
-    if (data.url) {
-      window.location.href = data.url;
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err: any) {
+      alert(err.message || "Payment failed");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setLoading(false);
+  const handlePlayToggle = () => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play(song.id);
+    }
   };
 
   return (
-    <div className="bg-white/5 rounded-2xl overflow-hidden hover:bg-white/10 transition">
-      <img
-        src={`https://YOUR_PROJECT.supabase.co/storage/v1/object/public/covers/${song.cover_url}`}
-        className="w-full h-48 object-cover"
-      />
+    <div className="group card overflow-hidden shadow-lg transition">
+      
+      {/* 🖼️ COVER */}
+      <div className="relative w-full h-48 overflow-hidden rounded-t-2xl">
+        <img
+          src={song.cover_signed_url || "/placeholder.png"}
+          alt={song.title}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
 
-      <div className="p-4">
-        <p className="font-semibold text-lg">{song.title}</p>
+        {/* 🎧 HOVER PLAY BUTTON */}
+        {owned && (
+          <button
+            onClick={handlePlayToggle}
+            className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition"
+          >
+            <div className="bg-white text-black rounded-full px-4 py-2 text-sm font-medium shadow">
+              {playerLoading && isPlaying
+                ? "Loading..."
+                : isPlaying
+                ? "Pause"
+                : "Play"}
+            </div>
+          </button>
+        )}
+      </div>
 
-        <p className="text-sm text-white/50 mb-3">
+      {/* 🎵 CONTENT */}
+      <div className="p-4 space-y-2">
+        {/* Title */}
+        <p className="font-semibold text-lg truncate">
+          {song.title}
+        </p>
+
+        {/* 🎯 GENRE */}
+        {song.genre && (
+          <p className="text-xs text-muted">
+            {song.genre}
+          </p>
+        )}
+
+        {/* Price */}
+        <p className="text-sm text-muted">
           ${song.price}
         </p>
 
+        {/* 🎯 ACTION BUTTON */}
         {owned ? (
-          <a
-            href={`/song/${song.id}`}
-            className="block text-center bg-white text-black py-2 rounded-lg"
+          <button
+            onClick={handlePlayToggle}
+            className="btn btn-primary w-full mt-2"
           >
-            ▶ Listen
-          </a>
+            {playerLoading && isPlaying
+              ? "Loading..."
+              : isPlaying
+              ? "Pause"
+              : "▶ Play"}
+          </button>
         ) : (
           <button
             onClick={handleBuy}
             disabled={loading}
-            className="w-full bg-white text-black py-2 rounded-lg"
+            className="btn btn-primary w-full mt-2"
           >
-            {loading ? "Loading..." : "Buy"}
+            {loading ? "Processing..." : "Buy"}
           </button>
         )}
       </div>
