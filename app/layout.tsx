@@ -1,5 +1,6 @@
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
+import { LanguageProvider } from "@/context/LanguageProvider";
 
 export const metadata = {
   title: "Musique",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-black text-white">
-        <AppShell>{children}</AppShell>
+        <LanguageProvider>
+          <AppShell>{children}</AppShell>
+        </LanguageProvider>
       </body>
     </html>
   );

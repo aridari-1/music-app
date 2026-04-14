@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import useAuth from "@/hooks/useAuth";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -16,6 +17,10 @@ export default function Navbar() {
 
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-4">
+
+        {/* 🌍 LANGUAGE SWITCH */}
+        <LanguageSwitcher />
+
         {user ? (
           <Link
             href="/account"
