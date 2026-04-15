@@ -14,10 +14,17 @@ export default function AppShell({
       <Navbar />
 
       {/* 🧱 MAIN CONTENT */}
-      <div className="mx-auto w-full max-w-7xl flex-1">
-        <main className="min-h-[100vh] px-4 sm:px-6 lg:px-8 pb-[140px] md:pb-[120px]">
-          {children}
+      <div className="w-full flex-1">
+
+        <main className="min-h-[100vh] px-0 sm:px-6 lg:px-8 pb-[160px] md:pb-[120px]">
+
+          {/* 🔥 MOBILE: FULL WIDTH / DESKTOP: CENTERED */}
+          <div className="w-full sm:max-w-7xl sm:mx-auto">
+            {children}
+          </div>
+
         </main>
+
       </div>
 
       {/* 📱 MOBILE NAV */}

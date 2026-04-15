@@ -36,7 +36,7 @@ export default function HomeClient({
   return (
     <main className="min-h-screen text-white">
 
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-40 pt-10">
+      <div className="mx-auto w-full max-w-7xl px-0 sm:px-6 pb-40 pt-10">
 
         {/* 🔝 HEADER */}
         <section>
@@ -53,11 +53,11 @@ export default function HomeClient({
           </p>
         </section>
 
-        {/* 🎧 HERO (FIXED MOBILE 🔥) */}
+        {/* 🎧 HERO */}
         <section className="mt-14 flex flex-col lg:grid lg:grid-cols-2 gap-10 items-center">
 
           {/* TEXT */}
-          <div className="space-y-5 text-center lg:text-left">
+          <div className="space-y-5 text-center lg:text-left px-4 sm:px-0">
 
             <p className="text-sm text-white/50">
               {t.trending}
@@ -120,7 +120,7 @@ export default function HomeClient({
         </section>
 
         {/* 🎯 GENRES */}
-        <section className="mt-12 flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+        <section className="mt-12 flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory px-4 sm:px-0">
           <Pill label={t.trending} />
           <Pill label={t.new} />
           <Pill label="Afro" />
@@ -130,7 +130,7 @@ export default function HomeClient({
         </section>
 
         {/* 🎵 SECTIONS */}
-        <div className="mt-16 space-y-24">
+        <div className="mt-16 space-y-24 px-4 sm:px-0">
 
           {/* 🔥 TRENDING */}
           {trending.length > 0 && (
@@ -170,16 +170,16 @@ export default function HomeClient({
 function Section({ title, children }: any) {
   return (
     <section className="space-y-5">
-      <h2 className="text-2xl font-semibold">{title}</h2>
+      <h2 className="text-2xl font-semibold px-4 sm:px-0">{title}</h2>
 
-      <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth">
+      <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-4 sm:px-0">
         {children}
       </div>
     </section>
   );
 }
 
-/* 🔥 CARD SLOT (BIGGER FOR MOBILE 🔥) */
+/* 🔥 CARD SLOT */
 function CardSlot({ children }: any) {
   return (
     <div className="snap-start w-[240px] min-w-[240px]">
