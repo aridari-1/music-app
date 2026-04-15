@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
-import Player from "@/components/ui/Player";
+import PlayButton from "@/components/ui/PlayButton";
 
 export default async function SongPage({
   params,
@@ -11,12 +11,12 @@ export default async function SongPage({
 
   const supabase = await createClient();
 
-  // 🔐 Get user
+  // 🔐 USER
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 🎵 Get song
+  // 🎵 SONG
   const { data: song } = await supabase
     .from("songs")
     .select("*")
@@ -25,13 +25,13 @@ export default async function SongPage({
 
   if (!song) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p>Song not found</p>
+      <main className="min-h-screen flex items-center justify-center text-white">
+        Song not found
       </main>
     );
   }
 
-  // 🎧 Check ownership
+  // 🎧 OWNERSHIP
   let owned = false;
 
   if (user) {
@@ -45,7 +45,7 @@ export default async function SongPage({
     owned = !!data;
   }
 
-  // 🖼️ Cover
+  // 🖼️ COVER
   let coverUrl = "/placeholder.png";
 
   if (song.cover_url) {
@@ -57,37 +57,57 @@ export default async function SongPage({
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-12 flex justify-center">
-      <div className="w-full max-w-xl">
+    <main className="relative min-h-screen text-white overflow-hidden">
 
-        {/* COVER */}
-        <div className="w-full h-72 rounded-2xl overflow-hidden mb-6">
+      {/* 🌌 BACKGROUND */}
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
+
+      {/* 🌫️ GLOW */}
+      <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-500/20 blur-3xl rounded-full" />
+
+      {/* 🎧 CONTENT */}
+      <div className="relative z-10 flex flex-col items-center justify-center px-6 py-20">
+
+        {/* 🖼️ COVER */}
+        <div className="w-full max-w-sm">
           <img
             src={coverUrl}
             alt={song.title}
-            className="w-full h-full object-cover"
+            className="w-full aspect-square object-cover rounded-3xl shadow-2xl"
           />
         </div>
 
-        {/* INFO */}
-        <h1 className="text-3xl font-semibold mb-2">
-          {song.title}
-        </h1>
+        {/* 🎵 INFO */}
+        <div className="mt-8 text-center">
+          <h1 className="text-3xl sm:text-4xl font-semibold">
+            {song.title}
+          </h1>
 
-        {song.genre && (
-          <p className="text-white/60 mb-4">
-            {song.genre}
-          </p>
-        )}
+          {song.genre && (
+            <p className="text-white/60 mt-2">
+              {song.genre}
+            </p>
+          )}
+        </div>
 
-        {/* PLAYER */}
-        {owned ? (
-          <Player songId={song.id} />
-        ) : (
-          <p className="text-white/50">
-            You need to purchase this song to listen.
-          </p>
-        )}
+        {/* 🎧 ACTION */}
+        <div className="mt-8 w-full max-w-sm">
+
+          {owned ? (
+            <PlayButton
+              song={{
+                ...song,
+                cover_signed_url: coverUrl, // 🔥 IMPORTANT FIX
+              }}
+            />
+          ) : (
+            <button className="w-full bg-white text-black py-3 rounded-xl font-medium">
+              Buy for ${song.price}
+            </button>
+          )}
+
+        </div>
+
       </div>
     </main>
   );

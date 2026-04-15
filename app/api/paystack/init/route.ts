@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         email: user.email,
         amount: song.price * 100,
-        currency: "USD",
+        currency: "XOF",
 
         reference,
 

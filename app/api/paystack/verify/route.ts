@@ -6,12 +6,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const reference = searchParams.get("reference");
 
-    // ❌ No reference → go home
     if (!reference) {
-      console.error("❌ Missing reference");
-      return NextResponse.redirect(
-        "https://music-app-pi-six.vercel.app"
-      );
+      return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
     }
 
     // 🔍 Verify with Paystack
@@ -24,50 +20,55 @@ export async function GET(req: Request) {
       }
     );
 
-    const data = await res.json();
+    const response = await res.json();
+    const data = response?.data;
 
-    console.log("✅ PAYSTACK VERIFY RESPONSE:", data);
+    console.log("✅ VERIFY:", data);
 
-    // ❌ Payment failed
-    if (data?.data?.status !== "success") {
-      console.error("❌ Payment not successful");
-      return NextResponse.redirect(
-        "https://music-app-pi-six.vercel.app"
-      );
+    // ❌ STRICT VALIDATION
+    if (
+      !data ||
+      data.status !== "success" ||
+      !data.paid_at ||            // 🔥 MUST exist
+      !data.reference ||
+      !data.amount
+    ) {
+      console.error("❌ Payment not valid");
+      return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
     }
 
-    const metadata = data.data.metadata;
-
+    const metadata = data.metadata;
     const userId = metadata?.userId;
     const songId = metadata?.songId;
 
-    // ❌ Missing metadata
     if (!userId || !songId) {
-      console.error("❌ Missing metadata:", metadata);
-      return NextResponse.redirect(
-        "https://music-app-pi-six.vercel.app"
-      );
+      console.error("❌ Missing metadata");
+      return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
     }
 
-    const amount = data.data.amount / 100;
+    const amount = data.amount / 100;
 
-    // 💰 SPLIT (15% platform / 85% artist)
-    const platformFee = amount * 0.15;
-    const artistAmount = amount * 0.85;
-
-    // 🎵 Get artist_id from song
+    // 🎵 Get song
     const { data: song, error: songError } = await adminClient
       .from("songs")
-      .select("artist_id")
+      .select("artist_id, price")
       .eq("id", songId)
       .single();
 
     if (songError || !song) {
-      console.error("❌ Song fetch failed:", songError?.message);
-      return NextResponse.redirect(
-        "https://music-app-pi-six.vercel.app"
-      );
+      console.error("❌ Song fetch failed");
+      return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
     }
+
+    // ❌ VERY IMPORTANT: VERIFY AMOUNT
+    if (amount !== song.price) {
+      console.error("❌ Amount mismatch", { amount, expected: song.price });
+      return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
+    }
+
+    // 💰 SPLIT
+    const platformFee = amount * 0.15;
+    const artistAmount = amount * 0.85;
 
     // ✅ Prevent duplicate
     const { data: existing } = await adminClient
@@ -78,48 +79,31 @@ export async function GET(req: Request) {
 
     if (!existing) {
       // 💾 Insert purchase
-      const { error: purchaseError } = await adminClient
-        .from("purchases")
-        .insert({
-          buyer_id: userId,
-          song_id: songId,
-          artist_id: song.artist_id,
-          amount,
-          artist_amount: artistAmount,
-          platform_fee: platformFee,
-          reference,
-          payout_status: "pending",
-        });
-
-      if (purchaseError) {
-        console.error("❌ Purchase insert failed:", purchaseError.message);
-      }
+      await adminClient.from("purchases").insert({
+        buyer_id: userId,
+        song_id: songId,
+        artist_id: song.artist_id,
+        amount,
+        artist_amount: artistAmount,
+        platform_fee: platformFee,
+        reference,
+        payout_status: "pending",
+      });
 
       // 🎧 Add to library
-      const { error: libraryError } = await adminClient
-        .from("library")
-        .insert({
-          user_id: userId,
-          song_id: songId,
-        });
-
-      if (libraryError) {
-        console.error("❌ Library insert failed:", libraryError.message);
-      }
-    } else {
-      console.log("⚠️ Purchase already exists, skipping insert");
+      await adminClient.from("library").insert({
+        user_id: userId,
+        song_id: songId,
+      });
     }
 
-    // 🔁 Redirect to buyer dashboard
     return NextResponse.redirect(
-      "https://music-app-pi-six.vercel.app/dashboard/buyer"
+      `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/buyer`
     );
 
   } catch (error) {
     console.error("❌ VERIFY ERROR:", error);
 
-    return NextResponse.redirect(
-      "https://music-app-pi-six.vercel.app"
-    );
+    return NextResponse.redirect(process.env.NEXT_PUBLIC_SITE_URL!);
   }
 }

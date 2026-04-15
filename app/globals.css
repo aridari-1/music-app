@@ -1,140 +1,68 @@
-/* ✅ Tailwind v4 import */
-@import "tailwindcss";
+/* 🔥 REQUIRED FOR TAILWIND */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* 🌑 ROOT THEME */
+/* 1) Dark rendering */
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
-
-  --muted: #9ca3af;
-  --border: rgba(255, 255, 255, 0.08);
-
-  --card: rgba(255, 255, 255, 0.05);
-  --card-hover: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
 }
 
-/* 🌐 GLOBAL RESET */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html,
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
-}
-
-/* 🧱 LAYOUT */
-.container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-}
-
-/* 🪟 SCROLLBAR */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-/* 🎴 CARD SYSTEM */
-.card {
-  background: var(--card);
-  border-radius: 1rem;
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
-}
-
-.card:hover {
-  background: var(--card-hover);
-}
-
-/* 🧾 TEXT */
-.text-muted {
-  color: var(--muted);
-}
-
-/* 🔘 BUTTONS */
-.btn {
-  border-radius: 0.75rem;
-  padding: 0.6rem 1rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: white;
-  color: black;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-outline {
-  border: 1px solid var(--border);
-  color: white;
-}
-
-.btn-outline:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* 🧊 GLASS EFFECT */
-.glass {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-}
-
-/* 🎬 ANIMATIONS */
-.fade-in {
-  animation: fadeIn 0.4s ease forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ⚡ INPUT */
-input,
-select {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  padding: 0.6rem;
-  color: white;
-}
-
-input:focus,
-select:focus {
+/* 2) Player range */
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
   outline: none;
-  border-color: white;
+}
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.55);
+}
+.player-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.92);
 }
 
-/* 🖼️ IMAGE FIX */
-img {
-  display: block;
-  max-width: 100%;
+/* 3) Equalizer */
+.player-eq {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 12px;
+}
+.player-eq > span {
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(110, 231, 183, 0.95);
+  animation: eq 900ms ease-in-out infinite;
+}
+.player-eq > span:nth-child(2) { animation-delay: 150ms; }
+.player-eq > span:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes eq {
+  0%, 100% { height: 3px; opacity: 0.7; }
+  50% { height: 12px; opacity: 1; }
 }
 
-/* 🔥 MOBILE SAFE AREA */
+/* 4) Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .player-eq > span {
+    animation: none;
+  }
+}
+
+/* 5) Layout safety */
 body {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: 140px;
 }

@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
-
 // 🎵 Get all published songs
 export async function getSongs() {
+  const supabase = createClient();
+
   const { data, error } = await supabase
     .from("songs")
     .select("*")
@@ -14,8 +14,10 @@ export async function getSongs() {
   return data;
 }
 
-// 🎧 Get signed cover URL
+// 🖼️ Get signed cover
 export async function getCoverUrl(path: string) {
+  const supabase = createClient();
+
   const { data, error } = await supabase.storage
     .from("covers")
     .createSignedUrl(path, 60 * 60);
@@ -25,30 +27,24 @@ export async function getCoverUrl(path: string) {
   return data.signedUrl;
 }
 
-// 🎧 Get signed audio URL (secure)
-export async function getAudioUrl(songId: string) {
-  const res = await fetch("/api/stream", {
-    method: "POST",
-    body: JSON.stringify({ songId }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) throw new Error(data.error);
-
-  return data.url;
-}
+// 🔍 Search
 export async function searchSongs(query: string) {
+  if (!query) return [];
+
   const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
   const data = await res.json();
+
   return data.songs || [];
 }
+
+// 🔥 Trending
 export async function getTrendingSongs() {
   const res = await fetch("/api/trending");
   const data = await res.json();
   return data.songs || [];
 }
 
+// 🆕 New releases
 export async function getNewSongs() {
   const res = await fetch("/api/new");
   const data = await res.json();

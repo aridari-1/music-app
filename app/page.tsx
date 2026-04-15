@@ -22,51 +22,60 @@ export default async function HomePage() {
     ownedSongIds = library?.map((item) => item.song_id) || [];
   }
 
-  // 🔥 GET DATA
-  const { data: trendingRaw, error: trendingError } =
-    await supabase.rpc("get_trending_songs");
+  // 🎵 Fetch data
+  const [trendingRes, newRes] = await Promise.all([
+    supabase.rpc("get_trending_songs"),
+    supabase.rpc("get_new_songs"),
+  ]);
 
-  const { data: newRaw, error: newError } =
-    await supabase.rpc("get_new_songs");
+  const trendingRaw = trendingRes.data || [];
+  const newRaw = newRes.data || [];
 
-  if (trendingError) {
-    console.error("❌ Trending error:", trendingError.message);
+  if (trendingRes.error) {
+    console.error("❌ Trending error:", trendingRes.error.message);
   }
 
-  if (newError) {
-    console.error("❌ New releases error:", newError.message);
+  if (newRes.error) {
+    console.error("❌ New releases error:", newRes.error.message);
   }
 
-  // 🖼️ SIGNED URL HELPER
+  // 🖼️ Add signed cover URLs (OPTIMIZED)
   const addSignedUrls = async (songs: any[]) => {
     return Promise.all(
-      (songs || []).map(async (song) => {
-        let cover_signed_url = null;
-
-        if (song.cover_url) {
-          const { data } = await adminClient.storage
-            .from("covers")
-            .createSignedUrl(song.cover_url, 3600);
-
-          cover_signed_url = data?.signedUrl || null;
+      songs.map(async (song) => {
+        if (!song.cover_url) {
+          return { ...song, cover_signed_url: null };
         }
+
+        const { data } = await adminClient.storage
+          .from("covers")
+          .createSignedUrl(song.cover_url, 3600);
 
         return {
           ...song,
-          cover_signed_url,
+          cover_signed_url: data?.signedUrl || null,
         };
       })
     );
   };
 
-  const trending = await addSignedUrls(trendingRaw || []);
-  const newReleases = await addSignedUrls(newRaw || []);
+  const [trending, newReleases] = await Promise.all([
+    addSignedUrls(trendingRaw),
+    addSignedUrls(newRaw),
+  ]);
 
   return (
-    <HomeClient
-      trending={trending}
-      newReleases={newReleases}
-      ownedSongIds={ownedSongIds}
-    />
+    <div className="relative">
+
+      {/* 🔥 GLOBAL BACKGROUND GRADIENT (PREMIUM TOUCH) */}
+      <div className="pointer-events-none absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-purple-900/40 to-transparent" />
+
+      {/* 🎧 MAIN CONTENT */}
+      <HomeClient
+        trending={trending}
+        newReleases={newReleases}
+        ownedSongIds={ownedSongIds}
+      />
+    </div>
   );
 }
