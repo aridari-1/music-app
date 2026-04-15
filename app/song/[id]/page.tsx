@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import PlayButton from "@/components/ui/PlayButton";
+import BuyButton from "@/components/ui/BuyButton";
 import Link from "next/link";
 
 export default async function SongPage({
@@ -10,10 +11,10 @@ export default async function SongPage({
 }) {
   const supabase = await createClient();
 
-  // 🔥 FIX (Next.js 16)
+  // ✅ Next.js 16 params fix
   const { id } = await params;
 
-  // 🔥 GUARD
+  // ✅ Guard
   if (!id || id === "undefined") {
     return (
       <main className="min-h-screen flex items-center justify-center text-white">
@@ -58,9 +59,8 @@ export default async function SongPage({
     );
   }
 
-  // 🔥 FIX (Supabase array)
+  // 🎤 ARTIST (array fix)
   const artist = song.artists?.[0] || null;
-
   const artistName = artist?.name || "Unknown artist";
   const artistId = artist?.id;
 
@@ -101,6 +101,7 @@ export default async function SongPage({
       {/* CONTENT */}
       <div className="relative z-10 flex flex-col items-center justify-center px-6 py-20">
 
+        {/* COVER */}
         <div className="w-full max-w-sm">
           <img
             src={coverUrl}
@@ -109,6 +110,7 @@ export default async function SongPage({
           />
         </div>
 
+        {/* INFO */}
         <div className="mt-8 text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-semibold">
             {song.title}
@@ -130,6 +132,7 @@ export default async function SongPage({
           )}
         </div>
 
+        {/* ACTION */}
         <div className="mt-8 w-full max-w-sm">
           {owned ? (
             <PlayButton
@@ -140,12 +143,7 @@ export default async function SongPage({
               }}
             />
           ) : (
-            <form action="/api/paystack/initialize" method="POST">
-              <input type="hidden" name="songId" value={song.id} />
-              <button className="w-full bg-white text-black py-3 rounded-xl font-medium hover:opacity-90 transition">
-                Buy for ${song.price}
-              </button>
-            </form>
+            <BuyButton songId={song.id} price={song.price} />
           )}
         </div>
 

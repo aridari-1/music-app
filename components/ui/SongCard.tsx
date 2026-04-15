@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { initiatePurchase } from "@/services/purchases";
 import usePlayer from "@/hooks/usePlayer";
 
 export default function SongCard({
@@ -40,16 +39,34 @@ export default function SongCard({
     }
   };
 
+  // 🔥 FIXED BUY LOGIC (IMPORTANT)
   const handleBuy = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!songId) return;
 
     try {
       setLoading(true);
-      const url = await initiatePurchase(songId);
-      if (url) window.location.href = url;
+
+      const res = await fetch("/api/paystack/initialize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ songId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Payment failed");
+        return;
+      }
+
+      // 🔥 REDIRECT TO PAYSTACK
+      window.location.href = data.url;
+
     } catch (err: any) {
-      alert(err.message || "Payment failed");
+      alert(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
