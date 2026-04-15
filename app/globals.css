@@ -3,12 +3,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 1) Dark rendering */
+/* 🌑 DARK MODE BASE */
 :root {
   color-scheme: dark;
 }
 
-/* 2) Player range */
+/* 🔥 SMOOTH SCROLL (APP FEEL) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 📱 IMPROVE TOUCH SCROLL (iOS-like) */
+body {
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  padding-bottom: 140px; /* prevent bottom nav overlap */
+}
+
+/* 🎧 PLAYER RANGE */
 .player-range {
   -webkit-appearance: none;
   appearance: none;
@@ -34,35 +47,83 @@
   background: rgba(255,255,255,0.92);
 }
 
-/* 3) Equalizer */
+/* 🔊 EQUALIZER (ENHANCED 🔥) */
 .player-eq {
   display: inline-flex;
-  gap: 2px;
+  gap: 3px;
   align-items: flex-end;
-  height: 12px;
+  height: 14px;
 }
+
 .player-eq > span {
-  width: 2px;
+  width: 3px;
   border-radius: 2px;
   background: rgba(110, 231, 183, 0.95);
   animation: eq 900ms ease-in-out infinite;
 }
-.player-eq > span:nth-child(2) { animation-delay: 150ms; }
-.player-eq > span:nth-child(3) { animation-delay: 300ms; }
 
-@keyframes eq {
-  0%, 100% { height: 3px; opacity: 0.7; }
-  50% { height: 12px; opacity: 1; }
+.player-eq > span:nth-child(2) {
+  animation-delay: 150ms;
+}
+.player-eq > span:nth-child(3) {
+  animation-delay: 300ms;
 }
 
-/* 4) Reduce motion */
+@keyframes eq {
+  0%, 100% {
+    height: 4px;
+    opacity: 0.7;
+  }
+  50% {
+    height: 14px;
+    opacity: 1;
+  }
+}
+
+/* 🧘 REDUCE MOTION (ACCESSIBILITY) */
 @media (prefers-reduced-motion: reduce) {
   .player-eq > span {
     animation: none;
   }
 }
 
-/* 5) Layout safety */
-body {
-  padding-bottom: 140px;
+/* 🔥 PREMIUM SCROLLBAR (DESKTOP ONLY) */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+  }
+}
+
+/* 🎯 SNAP SCROLL SUPPORT */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* ✨ OPTIONAL: SUBTLE FADE EDGE (PREMIUM TOUCH) */
+.fade-edge {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
 }

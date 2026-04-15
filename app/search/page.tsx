@@ -29,10 +29,8 @@ export default function SearchPage() {
       }
 
       setLoading(true);
-
       const results = await searchSongs(query);
       setSongs(results);
-
       setLoading(false);
     }, 400);
 
@@ -41,17 +39,20 @@ export default function SearchPage() {
 
   return (
     <main className="min-h-screen bg-black text-white px-6 py-10">
-      <h1 className="text-3xl font-semibold mb-6">Search</h1>
+
+      <h1 className="text-3xl font-semibold mb-8">
+        Search
+      </h1>
 
       {/* 🔍 INPUT */}
       <input
         placeholder="Search songs or genres..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full p-4 rounded-xl bg-white/10 border border-white/10 outline-none mb-8"
+        className="w-full p-4 rounded-xl bg-white/10 border border-white/10 outline-none mb-10"
       />
 
-      {/* 🎨 GENRES (Apple Music style) */}
+      {/* 🎨 GENRES */}
       {!query && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {GENRES.map((genre, i) => (
@@ -60,21 +61,14 @@ export default function SearchPage() {
               onClick={() => setQuery(genre)}
               className="relative h-28 rounded-2xl overflow-hidden cursor-pointer group"
             >
-              {/* 🎨 Background gradient */}
               <div className={`absolute inset-0 ${getGradient(i)} opacity-90`} />
-
-              {/* ✨ Glow */}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition" />
 
-              {/* 🎵 Text */}
               <div className="relative z-10 p-4 flex items-end h-full">
                 <p className="text-lg font-semibold">
                   {genre}
                 </p>
               </div>
-
-              {/* 🔥 Hover animation */}
-              <div className="absolute inset-0 scale-100 group-hover:scale-105 transition-transform duration-300" />
             </div>
           ))}
         </div>
@@ -82,27 +76,36 @@ export default function SearchPage() {
 
       {/* ⏳ LOADING */}
       {loading && (
-        <p className="text-white/50 mt-4">Searching...</p>
+        <p className="text-white/50 mt-4">
+          Searching...
+        </p>
       )}
 
-      {/* ❌ NO RESULTS */}
+      {/* ❌ EMPTY */}
       {!loading && query && songs.length === 0 && (
-        <p className="text-white/50 mt-4">No results found.</p>
+        <p className="text-white/50 mt-4">
+          No results found.
+        </p>
       )}
 
       {/* 🎵 RESULTS */}
       {query && songs.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
           {songs.map((song) => (
-            <SongCard key={song.id} song={song} owned={false} />
+            <SongCard
+              key={song.id}
+              song={song}
+              owned={false}
+            />
           ))}
         </div>
       )}
+
     </main>
   );
 }
 
-/* 🎨 Gradient generator */
+/* 🎨 GRADIENTS */
 function getGradient(i: number) {
   const gradients = [
     "bg-gradient-to-br from-pink-500 to-purple-600",

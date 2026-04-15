@@ -5,12 +5,12 @@ import HomeClient from "@/components/HomeClient";
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // 🔐 Get user
+  // 🔐 USER
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 🎧 Owned songs
+  // 🎧 OWNED SONGS
   let ownedSongIds: string[] = [];
 
   if (user) {
@@ -22,7 +22,7 @@ export default async function HomePage() {
     ownedSongIds = library?.map((item) => item.song_id) || [];
   }
 
-  // 🎵 Fetch data
+  // 🎵 FETCH DATA (RPC)
   const [trendingRes, newRes] = await Promise.all([
     supabase.rpc("get_trending_songs"),
     supabase.rpc("get_new_songs"),
@@ -39,7 +39,30 @@ export default async function HomePage() {
     console.error("❌ New releases error:", newRes.error.message);
   }
 
-  // 🖼️ Add signed cover URLs (OPTIMIZED)
+  // 🔥 ADD ARTIST DATA (IMPORTANT FIX)
+  const enrichWithArtist = async (songs: any[]) => {
+    if (!songs.length) return [];
+
+    // get all artist ids
+    const artistIds = songs.map((s) => s.artist_id).filter(Boolean);
+
+    const { data: artists } = await supabase
+      .from("artists")
+      .select("id, name, avatar_url")
+      .in("id", artistIds);
+
+    const artistMap = new Map(
+      artists?.map((a) => [a.id, a]) || []
+    );
+
+    return songs.map((song) => ({
+      ...song,
+      artist_name: artistMap.get(song.artist_id)?.name || "Unknown artist",
+      artist_avatar: artistMap.get(song.artist_id)?.avatar_url || null,
+    }));
+  };
+
+  // 🖼️ ADD SIGNED URLS
   const addSignedUrls = async (songs: any[]) => {
     return Promise.all(
       songs.map(async (song) => {
@@ -59,18 +82,24 @@ export default async function HomePage() {
     );
   };
 
+  // 🔥 PIPELINE (IMPORTANT ORDER)
+  const [trendingWithArtist, newWithArtist] = await Promise.all([
+    enrichWithArtist(trendingRaw),
+    enrichWithArtist(newRaw),
+  ]);
+
   const [trending, newReleases] = await Promise.all([
-    addSignedUrls(trendingRaw),
-    addSignedUrls(newRaw),
+    addSignedUrls(trendingWithArtist),
+    addSignedUrls(newWithArtist),
   ]);
 
   return (
     <div className="relative">
 
-      {/* 🔥 GLOBAL BACKGROUND GRADIENT (PREMIUM TOUCH) */}
+      {/* 🔥 BACKGROUND */}
       <div className="pointer-events-none absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-purple-900/40 to-transparent" />
 
-      {/* 🎧 MAIN CONTENT */}
+      {/* 🎧 CONTENT */}
       <HomeClient
         trending={trending}
         newReleases={newReleases}

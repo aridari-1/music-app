@@ -1,15 +1,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import PlayButton from "@/components/ui/PlayButton";
+import Link from "next/link";
 
 export default async function SongPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const supabase = await createClient();
+
+  // 🔥 FIX (Next.js 16)
   const { id } = await params;
 
-  const supabase = await createClient();
+  // 🔥 GUARD
+  if (!id || id === "undefined") {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-white">
+        Invalid song
+      </main>
+    );
+  }
 
   // 🔐 USER
   const {
@@ -17,11 +28,27 @@ export default async function SongPage({
   } = await supabase.auth.getUser();
 
   // 🎵 SONG
-  const { data: song } = await supabase
+  const { data: song, error } = await supabase
     .from("songs")
-    .select("*")
+    .select(`
+      id,
+      title,
+      price,
+      genre,
+      cover_url,
+      artist_id,
+      artists (
+        id,
+        name,
+        avatar_url
+      )
+    `)
     .eq("id", id)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    console.error("Song fetch error:", error.message);
+  }
 
   if (!song) {
     return (
@@ -30,6 +57,12 @@ export default async function SongPage({
       </main>
     );
   }
+
+  // 🔥 FIX (Supabase array)
+  const artist = song.artists?.[0] || null;
+
+  const artistName = artist?.name || "Unknown artist";
+  const artistId = artist?.id;
 
   // 🎧 OWNERSHIP
   let owned = false;
@@ -59,16 +92,15 @@ export default async function SongPage({
   return (
     <main className="relative min-h-screen text-white overflow-hidden">
 
-      {/* 🌌 BACKGROUND */}
+      {/* BACKGROUND */}
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black to-black" />
 
-      {/* 🌫️ GLOW */}
+      {/* GLOW */}
       <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-500/20 blur-3xl rounded-full" />
 
-      {/* 🎧 CONTENT */}
+      {/* CONTENT */}
       <div className="relative z-10 flex flex-col items-center justify-center px-6 py-20">
 
-        {/* 🖼️ COVER */}
         <div className="w-full max-w-sm">
           <img
             src={coverUrl}
@@ -77,35 +109,44 @@ export default async function SongPage({
           />
         </div>
 
-        {/* 🎵 INFO */}
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-semibold">
             {song.title}
           </h1>
 
+          {artistId && (
+            <Link
+              href={`/artist/${artistId}`}
+              className="text-white/70 hover:text-white transition"
+            >
+              {artistName}
+            </Link>
+          )}
+
           {song.genre && (
-            <p className="text-white/60 mt-2">
+            <p className="text-white/50 text-sm">
               {song.genre}
             </p>
           )}
         </div>
 
-        {/* 🎧 ACTION */}
         <div className="mt-8 w-full max-w-sm">
-
           {owned ? (
             <PlayButton
               song={{
                 ...song,
-                cover_signed_url: coverUrl, // 🔥 IMPORTANT FIX
+                cover_signed_url: coverUrl,
+                artist_name: artistName,
               }}
             />
           ) : (
-            <button className="w-full bg-white text-black py-3 rounded-xl font-medium">
-              Buy for ${song.price}
-            </button>
+            <form action="/api/paystack/initialize" method="POST">
+              <input type="hidden" name="songId" value={song.id} />
+              <button className="w-full bg-white text-black py-3 rounded-xl font-medium hover:opacity-90 transition">
+                Buy for ${song.price}
+              </button>
+            </form>
           )}
-
         </div>
 
       </div>
