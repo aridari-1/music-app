@@ -18,7 +18,7 @@ export async function signUp(formData: FormData) {
 
       // ✅ FIXED: use real deployed URL + callback
       emailRedirectTo:
-        "https://music-app-pi-six.vercel.app/auth/callback",
+        `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
     },
   });
 
