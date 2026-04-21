@@ -6,8 +6,10 @@ import Link from "next/link";
 
 export default async function SongPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: { success?: string };
 }) {
   const supabase = await createClient();
 
@@ -130,7 +132,21 @@ export default async function SongPage({
               {song.genre}
             </p>
           )}
+
+          {/* 🔥 GUEST / LOCKED MESSAGE */}
+          {!owned && (
+            <p className="text-sm text-white/50 mt-2">
+              Sign in to purchase and unlock full playback
+            </p>
+          )}
         </div>
+
+        {/* 🔥 SUCCESS MESSAGE AFTER PAYMENT */}
+        {searchParams?.success === "true" && (
+          <div className="bg-green-500/20 text-green-400 px-4 py-2 rounded-xl mt-6 text-sm">
+            You now own this song 🎉
+          </div>
+        )}
 
         {/* ACTION */}
         <div className="mt-8 w-full max-w-sm">

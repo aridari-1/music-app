@@ -32,9 +32,20 @@ export async function login(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role === "artist") {
-    redirect("/dashboard/artist");
+ if (profile?.role === "artist") {
+  // 🔥 CHECK IF ARTIST PROFILE EXISTS
+  const { data: artist } = await supabase
+    .from("artists")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!artist) {
+    redirect("/artist/setup"); // 🔥 FORCE SETUP
   }
+
+  redirect("/dashboard/artist");
+}
 
   redirect("/dashboard/buyer");
 }

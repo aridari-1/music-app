@@ -15,10 +15,7 @@ export async function signUp(formData: FormData) {
     password,
     options: {
       data: { role },
-
-      // ✅ FIXED: use real deployed URL + callback
-      emailRedirectTo:
-        `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   });
 

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { initiatePurchase } from "@/services/purchases";
 import usePlayer from "@/hooks/usePlayer";
 
 export default function SongCard({
@@ -12,6 +14,7 @@ export default function SongCard({
   owned: boolean;
 }) {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const {
     play,
@@ -21,16 +24,24 @@ export default function SongCard({
     loading: playerLoading,
   } = usePlayer();
 
-  // 🔥 FIX
-  const songId = song?.id;
-  const safeHref = songId ? `/song/${songId}` : "#";
-
-  const isCurrent = currentSongId === songId;
+  const isCurrent = currentSongId === song.id;
   const isActive = isCurrent && isPlaying;
+
+  const goToSong = () => {
+    if (!song?.id) return;
+    router.push(`/song/${song.id}`);
+  };
 
   const handlePlayToggle = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!songId) return;
+    e.stopPropagation();
+
+    if (!song?.id) return;
+
+    if (!owned) {
+      router.push(`/auth/login?redirect=/song/${song.id}`);
+      return;
+    }
 
     if (isCurrent && isPlaying) {
       pause();
@@ -39,47 +50,36 @@ export default function SongCard({
     }
   };
 
-  // 🔥 FIXED BUY LOGIC (IMPORTANT)
   const handleBuy = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!songId) return;
+    e.stopPropagation();
+
+    if (!song?.id) return;
+
+    if (!owned) {
+      router.push(`/auth/login?redirect=/song/${song.id}`);
+      return;
+    }
 
     try {
       setLoading(true);
-
-      const res = await fetch("/api/paystack/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ songId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Payment failed");
-        return;
-      }
-
-      // 🔥 REDIRECT TO PAYSTACK
-      window.location.href = data.url;
-
+      const url = await initiatePurchase(song.id);
+      if (url) window.location.href = url;
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      alert(err.message || "Payment failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Link href={safeHref} className="block">
+    <div className="block">
       <div
-        className={`group relative cursor-pointer transition duration-300 ${
+        className={`group relative transition duration-300 ${
           isActive ? "scale-[1.04]" : "hover:scale-[1.04]"
         }`}
       >
-
+        {/* 🔥 ACTIVE GLOW */}
         <div
           className={`absolute inset-0 rounded-2xl transition duration-500 ${
             isActive
@@ -88,13 +88,18 @@ export default function SongCard({
           }`}
         />
 
-        <div className="relative overflow-hidden rounded-2xl">
+        {/* 🖼️ COVER */}
+        <div
+          onClick={goToSong}
+          className="relative overflow-hidden rounded-2xl cursor-pointer"
+        >
           <img
             src={song.cover_signed_url || "/placeholder.png"}
             alt={song.title}
             className="w-full aspect-square object-cover transition duration-500 group-hover:scale-110"
           />
 
+          {/* ▶ PLAY BUTTON */}
           {owned && (
             <button
               onClick={handlePlayToggle}
@@ -110,6 +115,7 @@ export default function SongCard({
             </button>
           )}
 
+          {/* 🔊 EQUALIZER */}
           {isActive && (
             <div className="absolute top-3 left-3 player-eq">
               <span />
@@ -119,39 +125,45 @@ export default function SongCard({
           )}
         </div>
 
-        <div className="mt-4 px-1 space-y-1">
-          <p className="text-[15px] font-semibold leading-snug">
+        {/* 🎵 INFO */}
+        <div className="mt-3 px-1 space-y-1">
+          {/* TITLE */}
+          <p
+            onClick={goToSong}
+            className={`text-[14px] sm:text-[15px] font-semibold leading-snug cursor-pointer ${
+              isActive ? "text-white" : "text-white/90"
+            }`}
+          >
             {song.title}
           </p>
 
+          {/* 🎤 ARTIST */}
           {song.artist_id && (
             <Link
               href={`/artist/${song.artist_id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-sm text-white/60 hover:text-white transition block"
+              className="text-sm text-white/60 hover:text-white transition block relative z-10"
             >
               {song.artist_name || "Unknown artist"}
             </Link>
           )}
 
+          {/* 🎼 GENRE */}
           {song.genre && (
-            <p className="text-xs text-white/50">
-              {song.genre}
-            </p>
+            <p className="text-xs text-white/50">{song.genre}</p>
           )}
 
+          {/* 💰 BUY BUTTON */}
           {!owned && (
             <button
               onClick={handleBuy}
-              disabled={loading || !songId}
+              disabled={loading}
               className="mt-3 w-full text-sm py-2.5 rounded-full bg-white text-black font-medium hover:opacity-90 transition"
             >
               {loading ? "Processing..." : `Buy $${song.price}`}
             </button>
           )}
         </div>
-
       </div>
-    </Link>
+    </div>
   );
 }

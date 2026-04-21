@@ -13,6 +13,9 @@ export type Song = {
 
   // optionnel si vous l’avez en base
   artist_name?: string | null;
+
+  // 🔥 ADDED (ownership check)
+  is_owned?: boolean;
 };
 
 type PlayArgs = {
@@ -22,7 +25,6 @@ type PlayArgs = {
 };
 
 type PlayerState = {
-  // état lecture
   queue: Song[];
   contextId: string | null;
   currentIndex: number;
@@ -34,13 +36,11 @@ type PlayerState = {
   loading: boolean;
   error: string | null;
 
-  // préférences
-  volume: number; // 0..1
+  volume: number;
   muted: boolean;
   shuffle: boolean;
   repeat: RepeatMode;
 
-  // actions
   setQueue: (queue: Song[], startId?: string, contextId?: string) => void;
 
   play: (args: PlayArgs) => Promise<void>;
@@ -76,9 +76,7 @@ export default create<PlayerState>((set, get) => {
       a.pause();
       a.src = "";
       a.load();
-    } catch {
-      // noop
-    }
+    } catch {}
 
     a.onended = null;
     set({ audio: null, isPlaying: false });
@@ -88,7 +86,6 @@ export default create<PlayerState>((set, get) => {
     audio.onended = async () => {
       const { repeat, queue, currentIndex } = get();
 
-      // repeat one => relancer le même morceau
       if (repeat === "one") {
         try {
           audio.currentTime = 0;
@@ -100,7 +97,6 @@ export default create<PlayerState>((set, get) => {
         return;
       }
 
-      // sinon => next (ou stop si fin et repeat off)
       if (queue.length === 0) {
         set({ isPlaying: false });
         return;
@@ -113,14 +109,12 @@ export default create<PlayerState>((set, get) => {
         return;
       }
 
-      // repeat all => repartir au début
       if (atEnd && repeat === "all") {
         await get().play({ song: queue[0] });
         set({ currentIndex: 0, currentSong: queue[0], currentSongId: queue[0].id });
         return;
       }
 
-      // sinon => morceau suivant
       await get().next();
     };
   };
@@ -135,7 +129,6 @@ export default create<PlayerState>((set, get) => {
 
     if (queue.length === 1) return 0;
 
-    // shuffle simple (évite de rejouer le même index)
     let next = currentIndex;
     while (next === currentIndex) {
       next = Math.floor(Math.random() * queue.length);
@@ -147,15 +140,12 @@ export default create<PlayerState>((set, get) => {
     const { queue, currentIndex, shuffle, audio } = get();
     if (queue.length === 0) return -1;
 
-    // comportement Spotify-like: si on a écouté > 3 sec => retour au début du track
     if (audio && audio.currentTime > 3) return currentIndex;
 
     if (!shuffle) {
       return clamp(currentIndex - 1, 0, queue.length - 1);
     }
 
-    // en shuffle, un “prev” robuste implique un historique.
-    // ici on fait simple: retour à index-1 (ou 0), et on recommande d’ajouter un historique plus tard.
     return clamp(currentIndex - 1, 0, queue.length - 1);
   };
 
@@ -191,7 +181,15 @@ export default create<PlayerState>((set, get) => {
       try {
         set({ loading: true, error: null });
 
-        // si on reçoit une queue de contexte (Trending/New), on la mémorise
+        // 🔥 BLOCK GUEST / NOT OWNED
+        if (!song?.is_owned) {
+          set({
+            loading: false,
+            error: "You need to purchase this song to play it.",
+          });
+          return;
+        }
+
         if (queue && queue.length > 0) {
           const idx = queue.findIndex((s) => s.id === song.id);
           set({
@@ -201,10 +199,8 @@ export default create<PlayerState>((set, get) => {
           });
         }
 
-        // stop ancien audio
         stopAndCleanup();
 
-        // URL stream sécurisée
         const res = await fetch("/api/stream", {
           method: "POST",
           body: JSON.stringify({ songId: song.id }),
@@ -217,12 +213,10 @@ export default create<PlayerState>((set, get) => {
           return;
         }
 
-        // requête obsolète (clics rapides)
         if (token !== playRequestToken) return;
 
         const a = new Audio(data.url);
 
-        // appliquer préférences
         a.volume = get().volume;
         a.muted = get().muted;
 
@@ -249,7 +243,6 @@ export default create<PlayerState>((set, get) => {
     toggle: async ({ song, queue, contextId }) => {
       const { currentSongId, isPlaying } = get();
 
-      // si c’est le même morceau => pause / reprise
       if (currentSongId === song.id) {
         if (isPlaying) {
           get().pause();
@@ -259,7 +252,6 @@ export default create<PlayerState>((set, get) => {
         return;
       }
 
-      // sinon => play nouveau morceau (avec queue si fournie)
       await get().play({ song, queue, contextId });
     },
 
@@ -304,7 +296,6 @@ export default create<PlayerState>((set, get) => {
 
       const prevSong = queue[prevIndex];
 
-      // si on est >3 sec => juste rewind
       if (prevIndex === currentIndex && get().audio) {
         get().audio!.currentTime = 0;
         return;
@@ -327,7 +318,6 @@ export default create<PlayerState>((set, get) => {
       if (a) a.volume = volume;
       set({ volume });
 
-      // UX: si volume > 0, on peut désactiver mute
       if (volume > 0 && get().muted) {
         if (a) a.muted = false;
         set({ muted: false });

@@ -1,112 +1,95 @@
-import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/supabase/admin";
 
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
 export async function POST(req: Request) {
+  if (!PAYSTACK_SECRET_KEY) {
+    console.error("Missing PAYSTACK_SECRET_KEY");
+    return new NextResponse("Server misconfigured", { status: 500 });
+  }
+
   try {
+    // 🔐 VERIFY SIGNATURE
     const body = await req.text();
     const signature = req.headers.get("x-paystack-signature");
 
-    // 🔐 Verify signature
     const hash = crypto
-      .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY!)
+      .createHmac("sha512", PAYSTACK_SECRET_KEY)
       .update(body)
       .digest("hex");
 
-    if (hash !== signature) {
-      console.error("❌ Invalid Paystack signature");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
+    if (!signature || hash !== signature) {
+      return new NextResponse("Invalid signature", { status: 401 });
     }
 
     const event = JSON.parse(body);
 
-    console.log("📩 PAYSTACK WEBHOOK:", event);
+    // 🎯 ONLY HANDLE SUCCESS
+    if (event?.event !== "charge.success") {
+      return NextResponse.json({ received: true });
+    }
 
-    if (event.event === "charge.success") {
-      const data = event.data;
+    const payment = event.data;
 
-      const metadata = data.metadata;
+    const reference = payment?.reference;
+    const status = payment?.status;
+    const paidAt = payment?.paid_at;
+    const metadata = payment?.metadata || {};
 
-      const userId = metadata?.userId;
-      const songId = metadata?.songId;
-      const reference = data.reference;
+    const userId = metadata.userId;
+    const songId = metadata.songId;
 
-      if (!userId || !songId) {
-        console.error("❌ Missing metadata", metadata);
-        return NextResponse.json({ received: true });
-      }
+    if (!reference || status !== "success" || !paidAt || !userId || !songId) {
+      return new NextResponse("Invalid payload", { status: 400 });
+    }
 
-      // ✅ Prevent duplicate
-      const { data: existing } = await adminClient
-        .from("purchases")
-        .select("id")
-        .eq("reference", reference)
-        .maybeSingle();
+    // 🎵 FETCH SONG
+    const { data: song, error: songError } = await adminClient
+      .from("songs")
+      .select("id, price, is_published")
+      .eq("id", songId)
+      .maybeSingle();
 
-      if (!existing) {
-        const amount = data.amount / 100;
+    if (songError) {
+      console.error("Song fetch error:", songError.message);
+      return new NextResponse("Song lookup failed", { status: 500 });
+    }
 
-        // 💰 SPLIT (15% platform / 85% artist)
-        const platformFee = amount * 0.15;
-        const artistAmount = amount * 0.85;
+    if (!song || !song.is_published) {
+      return new NextResponse("Invalid song", { status: 400 });
+    }
 
-        // 🎵 Get song to retrieve artist_id
-        const { data: song, error: songError } = await adminClient
-          .from("songs")
-          .select("artist_id")
-          .eq("id", songId)
-          .single();
+    // 💰 AMOUNT CHECK (XOF SAFE)
+    const paidAmount = Number(payment.amount);
+    const expectedAmount = Number(song.price);
 
-        if (songError || !song) {
-          console.error("❌ Song fetch failed:", songError?.message);
-          return NextResponse.json({ received: true });
-        }
+    if (
+      Number.isNaN(paidAmount) ||
+      Number.isNaN(expectedAmount) ||
+      paidAmount !== expectedAmount
+    ) {
+      return new NextResponse("Amount mismatch", { status: 400 });
+    }
 
-        // 💾 Insert purchase
-        const { error: purchaseError } = await adminClient
-          .from("purchases")
-          .insert({
-            buyer_id: userId,
-            song_id: songId,
-            artist_id: song.artist_id,
-            amount,
-            artist_amount: artistAmount,
-            platform_fee: platformFee,
-            reference,
-            payout_status: "pending",
-          });
+    // 🚀 CALL DATABASE FUNCTION (ATOMIC 🔥)
+    const { error: rpcError } = await adminClient.rpc("process_purchase", {
+      p_user_id: userId,
+      p_song_id: songId,
+      p_reference: reference,
+      p_amount: paidAmount,
+    });
 
-        if (purchaseError) {
-          console.error("❌ Purchase insert failed:", purchaseError.message);
-        }
-
-        // 🎧 Add to library
-        const { error: libraryError } = await adminClient
-          .from("library")
-          .insert({
-            user_id: userId,
-            song_id: songId,
-          });
-
-        if (libraryError) {
-          console.error("❌ Library insert failed:", libraryError.message);
-        }
-      } else {
-        console.log("⚠️ Purchase already exists, skipping");
-      }
+    if (rpcError) {
+      console.error("RPC error:", rpcError.message);
+      return new NextResponse("Processing failed", { status: 500 });
     }
 
     return NextResponse.json({ received: true });
 
   } catch (error) {
-    console.error("❌ WEBHOOK ERROR:", error);
-
-    return NextResponse.json(
-      { error: "Webhook failed" },
-      { status: 500 }
-    );
+    console.error("WEBHOOK ERROR:", error);
+    return new NextResponse("Webhook error", { status: 500 });
   }
 }

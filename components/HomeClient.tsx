@@ -182,7 +182,7 @@ function Section({ title, children }: any) {
 /* 🔥 CARD SLOT */
 function CardSlot({ children }: any) {
   return (
-    <div className="snap-start w-[240px] min-w-[240px]">
+    <div className="snap-start w-[190px] min-w-[190px] sm:w-[220px] sm:min-w-[220px]">
       {children}
     </div>
   );

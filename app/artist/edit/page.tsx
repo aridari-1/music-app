@@ -1,17 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ArtistSetup() {
+export default function ArtistEditPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
 
+  // 🔥 LOAD CURRENT ARTIST DATA
+  useEffect(() => {
+    const fetchArtist = async () => {
+      try {
+        const res = await fetch("/api/artist/me");
+
+        const data = await res.json();
+
+        if (res.ok && data) {
+          setName(data.name || "");
+          setBio(data.bio || "");
+        }
+      } catch (err) {
+        console.error("Failed to fetch artist");
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchArtist();
+  }, []);
+
+  // 🔥 SAVE UPDATE
   const handleSave = async () => {
-    // 🔥 BASIC VALIDATION
     if (!name.trim()) {
       alert("Artist name is required");
       return;
@@ -20,17 +43,17 @@ export default function ArtistSetup() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/artist/setup", {
+      const res = await fetch("/api/artist/update", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json", // 🔥 IMPORTANT FIX
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ name, bio }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data?.error || "Failed to create artist profile");
+        throw new Error(data?.error || "Update failed");
       }
 
       router.push("/dashboard/artist");
@@ -42,12 +65,20 @@ export default function ArtistSetup() {
     }
   };
 
+  if (fetching) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-white">
+        Loading...
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center text-white px-4">
       <div className="w-full max-w-md space-y-6">
 
         <h1 className="text-3xl font-semibold">
-          Set up your artist profile
+          Edit your artist profile
         </h1>
 
         <input
@@ -69,7 +100,7 @@ export default function ArtistSetup() {
           disabled={loading}
           className="w-full bg-white text-black py-3 rounded disabled:opacity-50"
         >
-          {loading ? "Saving..." : "Continue"}
+          {loading ? "Saving..." : "Save Changes"}
         </button>
 
       </div>
