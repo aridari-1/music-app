@@ -14,6 +14,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // 🔥 Scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -22,6 +23,15 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // 🔥 LOCK BODY SCROLL WHEN MENU OPEN
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  }, [open]);
 
   return (
     <>
@@ -33,7 +43,6 @@ export default function Navbar() {
             : "h-16 bg-black/60 backdrop-blur-lg"
         } flex items-center justify-between px-4 sm:px-6 lg:px-8`}
       >
-
         {/* 🔥 LOGO */}
         <Link href="/" className="flex items-center gap-2 group">
           <Image
@@ -44,7 +53,6 @@ export default function Navbar() {
             className="object-contain transition group-hover:scale-110 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
             priority
           />
-
           <span className="text-sm sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
             Naluma Music
           </span>
@@ -83,7 +91,7 @@ export default function Navbar() {
         {/* 📱 MOBILE BUTTON */}
         <button
           onClick={() => setOpen(!open)}
-          className="md:hidden flex flex-col gap-1.5"
+          className="md:hidden flex flex-col gap-1.5 z-[10000]"
         >
           <span className="w-6 h-[2px] bg-white"></span>
           <span className="w-6 h-[2px] bg-white"></span>
@@ -93,29 +101,43 @@ export default function Navbar() {
 
       {/* 📱 MOBILE MENU */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-300 ${
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-[9999] transition-all duration-300 ${
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
       >
-        {/* 🔥 BACKDROP (CLICK TO CLOSE) */}
+        {/* 🔥 BACKDROP */}
         <div
           onClick={() => setOpen(false)}
-          className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+          className="absolute inset-0 bg-black/90 backdrop-blur-xl"
         />
 
         {/* MENU CONTENT */}
         <div
-          className={`relative z-50 flex flex-col items-center justify-center h-full gap-8 text-lg transform transition duration-300 ${
+          className={`relative z-[10000] flex flex-col items-center justify-center h-full gap-8 text-lg transform transition duration-300 ${
             open ? "translate-y-0" : "translate-y-10"
           }`}
         >
-
           {/* ❌ CLOSE BUTTON */}
           <button
             onClick={() => setOpen(false)}
-            className="absolute top-6 right-6 text-white text-2xl"
+            className="absolute top-6 right-6 text-white z-[10000]"
           >
-            ✕
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-8 h-8"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
 
           {/* 🔥 BRAND */}

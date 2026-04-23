@@ -1,4 +1,4 @@
-/* 🔥 REQUIRED FOR TAILWIND */
+/* 🔥 TAILWIND */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,17 +8,28 @@
   color-scheme: dark;
 }
 
-/* 🔥 SMOOTH SCROLL (APP FEEL) */
+/* 🔥 GLOBAL RESET */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* 🔥 SMOOTH SCROLL */
 html {
   scroll-behavior: smooth;
 }
 
-/* 📱 IMPROVE TOUCH SCROLL (iOS-like) */
+/* 📱 MOBILE & TOUCH OPTIMIZATION */
 body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
-  padding-bottom: 140px; /* prevent bottom nav overlap */
+}
+
+/* 🚫 LOCK SCROLL (USED FOR MOBILE MENU) */
+.no-scroll {
+  overflow: hidden;
 }
 
 /* 🎧 PLAYER RANGE */
@@ -27,27 +38,29 @@ body {
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   outline: none;
 }
+
 .player-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.92);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.55);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.55);
 }
+
 .player-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
   border: none;
-  background: rgba(255,255,255,0.92);
+  background: rgba(255, 255, 255, 0.92);
 }
 
-/* 🔊 EQUALIZER (ENHANCED 🔥) */
+/* 🔊 EQUALIZER */
 .player-eq {
   display: inline-flex;
   gap: 3px;
@@ -65,12 +78,14 @@ body {
 .player-eq > span:nth-child(2) {
   animation-delay: 150ms;
 }
+
 .player-eq > span:nth-child(3) {
   animation-delay: 300ms;
 }
 
 @keyframes eq {
-  0%, 100% {
+  0%,
+  100% {
     height: 4px;
     opacity: 0.7;
   }
@@ -80,14 +95,14 @@ body {
   }
 }
 
-/* 🧘 REDUCE MOTION (ACCESSIBILITY) */
+/* 🧘 ACCESSIBILITY (REDUCE MOTION) */
 @media (prefers-reduced-motion: reduce) {
   .player-eq > span {
     animation: none;
   }
 }
 
-/* 🔥 PREMIUM SCROLLBAR (DESKTOP ONLY) */
+/* 🔥 PREMIUM SCROLLBAR (DESKTOP) */
 @media (min-width: 768px) {
   ::-webkit-scrollbar {
     height: 6px;
@@ -99,16 +114,16 @@ body {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.25);
   }
 }
 
-/* 🎯 SNAP SCROLL SUPPORT */
+/* 🎯 SNAP SCROLL */
 .snap-x {
   scroll-snap-type: x mandatory;
 }
@@ -117,7 +132,7 @@ body {
   scroll-snap-align: start;
 }
 
-/* ✨ OPTIONAL: SUBTLE FADE EDGE (PREMIUM TOUCH) */
+/* ✨ FADE EDGE EFFECT */
 .fade-edge {
   mask-image: linear-gradient(
     to right,
@@ -126,4 +141,24 @@ body {
     black 90%,
     transparent
   );
+}
+
+/* 🔥 BUTTON PRESS FEEL */
+button {
+  transition: transform 0.1s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* 🔥 LINK RESET */
+a {
+  text-decoration: none;
+}
+
+/* 🔥 IMAGE SMOOTH RENDER */
+img {
+  user-select: none;
+  -webkit-user-drag: none;
 }
