@@ -44,7 +44,7 @@ export default function BuyButton({
       onClick={handleBuy}
       className="w-full bg-white text-black py-3 rounded-xl font-medium hover:opacity-90 transition"
     >
-      {loading ? "Processing..." : `Buy for $${price}`}
+      {loading ? "Processing..." : `Buy for ${price} XOF`}
     </button>
   );
 }

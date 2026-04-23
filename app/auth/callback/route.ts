@@ -1,18 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export async function GET(req: Request) {
-  const { searchParams, origin } = new URL(req.url);
-  const code = searchParams.get("code");
-
   const supabase = await createClient();
 
-  // 🔐 Exchange code for session
-  if (code) {
-    await supabase.auth.exchangeCodeForSession(code);
+  // 🔥 FIXED HEADERS (Next.js 16)
+  const headersList = await headers();
+  const origin = headersList.get("origin") || new URL(req.url).origin;
+
+  const { searchParams } = new URL(req.url);
+  const code = searchParams.get("code");
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/auth/login`);
   }
 
-  // 👤 Get user
+  const { error: exchangeError } =
+    await supabase.auth.exchangeCodeForSession(code);
+
+  if (exchangeError) {
+    console.error("Auth exchange error:", exchangeError.message);
+    return NextResponse.redirect(
+      `${origin}/auth/login?error=auth_failed`
+    );
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -21,16 +34,13 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/auth/login`);
   }
 
-  // 🎭 Get role
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  // 🎤 ARTIST FLOW (FIXED 🔥)
   if (profile?.role === "artist") {
-    // 🔥 CHECK IF ARTIST PROFILE EXISTS
     const { data: artist } = await supabase
       .from("artists")
       .select("id")
@@ -44,6 +54,5 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/dashboard/artist`);
   }
 
-  // 🧑‍💼 BUYER FLOW
   return NextResponse.redirect(`${origin}/dashboard/buyer`);
 }

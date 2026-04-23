@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     const supabase = await createClient();
 
-    // 🔥 FIX: READ JSON (NOT formData)
+    // 🔥 READ JSON BODY
     const body = await req.json();
     const songId = body.songId;
 
@@ -67,7 +67,10 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!song.price || Number(song.price) <= 0) {
+    // 💰 VALIDATE PRICE
+    const price = Number(song.price);
+
+    if (!price || price <= 0) {
       return NextResponse.json(
         { error: "Invalid price" },
         { status: 400 }
@@ -89,8 +92,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 💰 XOF → NO *100
-    const amount = Number(song.price);
+    // 🔥 PAYSTACK EXPECTS SMALLEST UNIT
+    const amount = Math.round(price * 100); // ✅ FIXED
 
     // 🔑 UNIQUE REFERENCE
     const reference = `pay_${song.id}_${user.id}_${Date.now()}_${Math.floor(
@@ -108,7 +111,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           email: user.email,
-          amount,
+          amount, // ✅ CORRECT
           currency: "XOF",
           reference,
           callback_url: `${SITE_URL}/api/paystack/verify`,

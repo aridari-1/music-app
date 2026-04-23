@@ -159,7 +159,7 @@ export default function SongCard({
               disabled={loading}
               className="mt-3 w-full text-sm py-2.5 rounded-full bg-white text-black font-medium hover:opacity-90 transition"
             >
-              {loading ? "Processing..." : `Buy $${song.price}`}
+              {loading ? "Processing..." : `Buy ${song.price} XOF`}
             </button>
           )}
         </div>
