@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
+import { useLanguage } from "@/context/LanguageProvider";
 import { Home, Music, Upload, LayoutDashboard, Search } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { user, role } = useAuth();
+  const { t } = useLanguage();
 
   const isActive = (href: string) =>
     pathname.startsWith(href);
@@ -15,7 +17,7 @@ export default function BottomNav() {
   const itemClass = (href: string) =>
     `flex flex-col items-center justify-center gap-1 text-[11px] transition ${
       isActive(href)
-        ? "text-white"
+        ? "text-white scale-105"
         : "text-white/50 hover:text-white"
     }`;
 
@@ -29,7 +31,7 @@ export default function BottomNav() {
         {/* 🏠 HOME */}
         <Link href="/" className={itemClass("/")}>
           <Home size={20} />
-          <span>Home</span>
+          <span>{t.home}</span>
         </Link>
 
         {/* 🎧 BUYER: MY MUSIC */}
@@ -39,7 +41,7 @@ export default function BottomNav() {
             className={itemClass("/dashboard")}
           >
             <Music size={20} />
-            <span>My Music</span>
+            <span>{t.myMusic}</span>
           </Link>
         )}
 
@@ -47,7 +49,7 @@ export default function BottomNav() {
         {role === "artist" && (
           <Link href="/upload" className={itemClass("/upload")}>
             <Upload size={20} />
-            <span>Upload</span>
+            <span>{t.upload}</span>
           </Link>
         )}
 
@@ -58,14 +60,14 @@ export default function BottomNav() {
             className={itemClass("/dashboard")}
           >
             <LayoutDashboard size={20} />
-            <span>Dashboard</span>
+            <span>{t.dashboard}</span>
           </Link>
         )}
 
-        {/* 🔍 SEARCH (ALL USERS) */}
+        {/* 🔍 SEARCH */}
         <Link href="/search" className={itemClass("/search")}>
           <Search size={20} />
-          <span>Search</span>
+          <span>{t.search}</span>
         </Link>
       </div>
     </nav>

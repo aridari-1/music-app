@@ -10,6 +10,8 @@ export const translations = {
     login: "Login",
     signup: "Sign Up",
 
+   
+   
     // LANDING
     discover: "Discover New Music",
     support: "Support artists.",
@@ -30,6 +32,23 @@ export const translations = {
     zouglou: "Zouglou",
     rap: "Rap Ivoire",
 
+    // UPLOAD
+    uploadSubtitle: "Share your music with the world",
+songTitle: "Song title",
+choosePrice: "Choose price",
+selectPrice: "Select a price",
+mostPopular: "Most Popular",
+selectGenre: "Select genre",
+selectAudio: "Select audio file",
+selectCover: "Select cover image",
+uploadSuccess: "Song uploaded successfully",
+uploadFailed: "Upload failed",
+uploading: "Uploading...",
+basic: "Basic",
+popular: "Popular",
+pro: "Pro",
+exclusive: "Exclusive",
+
     // SONG
     buy: "Buy",
     play: "Play",
@@ -40,6 +59,11 @@ export const translations = {
     unknownArtist: "Unknown artist",
     songNotFound: "Song not found",
     invalidSong: "Invalid song",
+
+    //SEARCH
+    searchPlaceholder: "Search songs or genres...",
+searching: "Searching...",
+noResults: "No results found.",
 
      //BUY BUTTON
     processing: "Processing...",
@@ -103,6 +127,23 @@ export const translations = {
     zouglou: "Zouglou",
     rap: "Rap Ivoire",
 
+    // UPLOAD
+    uploadSubtitle: "Partagez votre musique avec le monde",
+songTitle: "Titre de la chanson",
+choosePrice: "Choisir un prix",
+selectPrice: "Sélectionnez un prix",
+mostPopular: "Le plus populaire",
+selectGenre: "Choisir un genre",
+selectAudio: "Choisir un fichier audio",
+selectCover: "Choisir une image",
+uploadSuccess: "Chanson publiée avec succès",
+uploadFailed: "Échec de la publication",
+uploading: "Publication...",
+basic: "Basique",
+popular: "Populaire",
+pro: "Pro",
+exclusive: "Exclusif",
+
     // SONG
     buy: "Acheter",
     play: "Lire",
@@ -113,6 +154,11 @@ export const translations = {
     unknownArtist: "Artiste inconnu",
     songNotFound: "Morceau introuvable",
     invalidSong: "Morceau invalide",
+
+    //SEARCH
+    searchPlaceholder: "Recherchez des morceaux ou des genres...",
+    searching: "Recherche en cours...",
+    noResults: "Aucun résultat trouvé.",
 
     //BUY BUTTON
    processing: "Traitement...",

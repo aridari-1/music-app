@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { searchSongs } from "@/services/songs";
 import SongCard from "@/components/ui/SongCard";
+import { useLanguage } from "@/context/LanguageProvider";
 
 const GENRES = [
   "Coupe Decale",
@@ -17,6 +18,8 @@ const GENRES = [
 ];
 
 export default function SearchPage() {
+  const { t } = useLanguage();
+
   const [query, setQuery] = useState("");
   const [songs, setSongs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,13 +43,14 @@ export default function SearchPage() {
   return (
     <main className="min-h-screen bg-black text-white px-6 py-10">
 
+      {/* TITLE */}
       <h1 className="text-3xl font-semibold mb-8">
-        Search
+        {t.search}
       </h1>
 
       {/* 🔍 INPUT */}
       <input
-        placeholder="Search songs or genres..."
+        placeholder={t.searchPlaceholder || "Search songs or genres..."}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="w-full p-4 rounded-xl bg-white/10 border border-white/10 outline-none mb-10"
@@ -77,14 +81,14 @@ export default function SearchPage() {
       {/* ⏳ LOADING */}
       {loading && (
         <p className="text-white/50 mt-4">
-          Searching...
+          {t.searching || "Searching..."}
         </p>
       )}
 
       {/* ❌ EMPTY */}
       {!loading && query && songs.length === 0 && (
         <p className="text-white/50 mt-4">
-          No results found.
+          {t.noResults || "No results found."}
         </p>
       )}
 
