@@ -41,7 +41,7 @@ export default function HomeClient({
         {/* 🔝 HEADER */}
         <section>
           <p className="text-xs uppercase tracking-widest text-white/40 mb-2">
-            Musique
+            Naluma
           </p>
 
           <h1 className="text-3xl sm:text-4xl font-semibold">
@@ -83,7 +83,7 @@ export default function HomeClient({
                     href={`/song/${featuredSong.id}`}
                     className="bg-white text-black px-6 py-3 rounded-full font-medium"
                   >
-                    Open
+                    {t.open || "Open"}
                   </Link>
                 )
               ) : (
@@ -91,7 +91,7 @@ export default function HomeClient({
                   href="/search"
                   className="bg-white text-black px-6 py-3 rounded-full font-medium"
                 >
-                  Explore
+                  {t.explore || "Explore"}
                 </Link>
               )}
 
@@ -99,14 +99,14 @@ export default function HomeClient({
                 href="/search"
                 className="border border-white/10 px-6 py-3 rounded-full text-white/70"
               >
-                Browse
+                {t.browse || "Browse"}
               </Link>
             </div>
           </div>
 
           {/* IMAGE */}
           <div className="flex justify-center lg:justify-end">
-            <div className="relative w-[240px] h-[240px] sm:w-[300px] sm:h-[300px]">
+            <div className="relative w-[220px] h-[220px] sm:w-[300px] sm:h-[300px]">
               {featuredSong?.cover_signed_url && (
                 <img
                   src={featuredSong.cover_signed_url}
@@ -123,16 +123,15 @@ export default function HomeClient({
         <section className="mt-12 flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory px-4 sm:px-0">
           <Pill label={t.trending} />
           <Pill label={t.new} />
-          <Pill label="Afro" />
-          <Pill label="Drill" />
-          <Pill label="Zouglou" />
-          <Pill label="Rap Ivoire" />
+          <Pill label={t.afro || "Afro"} />
+          <Pill label={t.drill || "Drill"} />
+          <Pill label={t.zouglou || "Zouglou"} />
+          <Pill label={t.rap || "Rap Ivoire"} />
         </section>
 
         {/* 🎵 SECTIONS */}
         <div className="mt-16 space-y-24 px-4 sm:px-0">
 
-          {/* 🔥 TRENDING */}
           {trending.length > 0 && (
             <Section title={t.trending}>
               {trending.map((song) => (
@@ -146,7 +145,6 @@ export default function HomeClient({
             </Section>
           )}
 
-          {/* 🆕 NEW */}
           {newReleases.length > 0 && (
             <Section title={t.new}>
               {newReleases.map((song) => (
@@ -172,17 +170,17 @@ function Section({ title, children }: any) {
     <section className="space-y-5">
       <h2 className="text-2xl font-semibold px-4 sm:px-0">{title}</h2>
 
-      <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-4 sm:px-0">
+      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-4 sm:px-0">
         {children}
       </div>
     </section>
   );
 }
 
-/* 🔥 CARD SLOT */
+/* 🔥 CARD SLOT (FIXED MOBILE SIZE) */
 function CardSlot({ children }: any) {
   return (
-    <div className="snap-start w-[190px] min-w-[190px] sm:w-[220px] sm:min-w-[220px]">
+    <div className="snap-start w-[160px] min-w-[160px] sm:w-[200px] sm:min-w-[200px]">
       {children}
     </div>
   );

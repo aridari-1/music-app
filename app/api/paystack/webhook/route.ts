@@ -21,12 +21,13 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (!signature || hash !== signature) {
+      console.error("❌ Invalid Paystack signature");
       return new NextResponse("Invalid signature", { status: 401 });
     }
 
     const event = JSON.parse(body);
 
-    // 🎯 ONLY HANDLE SUCCESS
+    // 🎯 ONLY HANDLE SUCCESS EVENTS
     if (event?.event !== "charge.success") {
       return NextResponse.json({ received: true });
     }
@@ -42,6 +43,13 @@ export async function POST(req: Request) {
     const songId = metadata.songId;
 
     if (!reference || status !== "success" || !paidAt || !userId || !songId) {
+      console.error("❌ Invalid payload", {
+        reference,
+        status,
+        paidAt,
+        userId,
+        songId,
+      });
       return new NextResponse("Invalid payload", { status: 400 });
     }
 
@@ -53,43 +61,54 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (songError) {
-      console.error("Song fetch error:", songError.message);
+      console.error("❌ Song fetch error:", songError.message);
       return new NextResponse("Song lookup failed", { status: 500 });
     }
 
     if (!song || !song.is_published) {
+      console.error("❌ Invalid or unpublished song");
       return new NextResponse("Invalid song", { status: 400 });
     }
 
-    // 💰 AMOUNT CHECK (XOF SAFE)
-    const paidAmount = Number(payment.amount);
-    const expectedAmount = Number(song.price);
+    // 💰 PAYSTACK RETURNS SMALLEST UNIT
+    const paidAmount = Number(payment.amount); // e.g. 10000
+    const expectedAmount = Math.round(Number(song.price) * 100); // e.g. 100 * 100 = 10000
 
     if (
       Number.isNaN(paidAmount) ||
       Number.isNaN(expectedAmount) ||
       paidAmount !== expectedAmount
     ) {
+      console.error("❌ Amount mismatch", {
+        paidAmount,
+        expectedAmount,
+        songPrice: song.price,
+      });
       return new NextResponse("Amount mismatch", { status: 400 });
     }
 
-    // 🚀 CALL DATABASE FUNCTION (ATOMIC 🔥)
+    // 🚀 PROCESS PURCHASE (STORE REAL XOF VALUE)
     const { error: rpcError } = await adminClient.rpc("process_purchase", {
       p_user_id: userId,
       p_song_id: songId,
       p_reference: reference,
-      p_amount: paidAmount,
+      p_amount: Number(song.price), // ✅ store human-readable XOF
     });
 
     if (rpcError) {
-      console.error("RPC error:", rpcError.message);
+      console.error("❌ RPC error:", rpcError.message);
       return new NextResponse("Processing failed", { status: 500 });
     }
 
-    return NextResponse.json({ received: true });
+    console.log("✅ Purchase processed successfully", {
+      userId,
+      songId,
+      reference,
+    });
 
+    return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("WEBHOOK ERROR:", error);
+    console.error("❌ WEBHOOK ERROR:", error);
     return new NextResponse("Webhook error", { status: 500 });
   }
 }

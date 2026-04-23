@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { initiatePurchase } from "@/services/purchases";
 import usePlayer from "@/hooks/usePlayer";
+import BuyButton from "@/components/ui/BuyButton";
 
 export default function SongCard({
   song,
@@ -13,7 +12,6 @@ export default function SongCard({
   song: any;
   owned: boolean;
 }) {
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const {
@@ -47,28 +45,6 @@ export default function SongCard({
       pause();
     } else {
       play(song);
-    }
-  };
-
-  const handleBuy = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!song?.id) return;
-
-    if (!owned) {
-      router.push(`/auth/login?redirect=/song/${song.id}`);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const url = await initiatePurchase(song.id);
-      if (url) window.location.href = url;
-    } catch (err: any) {
-      alert(err.message || "Payment failed");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -141,7 +117,8 @@ export default function SongCard({
           {song.artist_id && (
             <Link
               href={`/artist/${song.artist_id}`}
-              className="text-sm text-white/60 hover:text-white transition block relative z-10"
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm text-white/60 hover:text-white transition block"
             >
               {song.artist_name || "Unknown artist"}
             </Link>
@@ -152,15 +129,14 @@ export default function SongCard({
             <p className="text-xs text-white/50">{song.genre}</p>
           )}
 
-          {/* 💰 BUY BUTTON */}
+          {/* 💰 BUY BUTTON (FINAL FIX) */}
           {!owned && (
-            <button
-              onClick={handleBuy}
-              disabled={loading}
-              className="mt-3 w-full text-sm py-2.5 rounded-full bg-white text-black font-medium hover:opacity-90 transition"
+            <div
+              className="mt-3"
+              onClick={(e) => e.stopPropagation()} // 🔥 CRITICAL FIX
             >
-              {loading ? "Processing..." : `Buy ${song.price} XOF`}
-            </button>
+              <BuyButton songId={song.id} price={song.price} />
+            </div>
           )}
         </div>
       </div>

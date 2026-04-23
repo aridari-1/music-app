@@ -1,16 +1,28 @@
+export const revalidate = 60; // 🔥 cache for 60 seconds
+
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import HomeClient from "@/components/HomeClient";
 
+type Song = {
+  id: string;
+  title?: string;
+  price?: number;
+  genre?: string;
+  cover_url?: string | null;
+  artist_id?: string | null;
+  artist_name?: string | null;
+};
+
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // 🔐 Get user
+  // 🔐 USER
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 🎧 Owned songs
+  // 🎧 OWNED SONGS
   let ownedSongIds: string[] = [];
 
   if (user) {
@@ -22,14 +34,11 @@ export default async function HomePage() {
     ownedSongIds = library?.map((item) => item.song_id) || [];
   }
 
-  // 🎵 Fetch data
+  // 🎵 FETCH DATA (PARALLEL)
   const [trendingRes, newRes] = await Promise.all([
     supabase.rpc("get_trending_songs"),
     supabase.rpc("get_new_songs"),
   ]);
-
-  const trendingRaw = trendingRes.data || [];
-  const newRaw = newRes.data || [];
 
   if (trendingRes.error) {
     console.error("❌ Trending error:", trendingRes.error.message);
@@ -39,15 +48,18 @@ export default async function HomePage() {
     console.error("❌ New releases error:", newRes.error.message);
   }
 
-  // 🔥 SAFETY FIX: REMOVE BROKEN SONGS (NO ID)
-  const sanitizeSongs = (songs: any[]) =>
-    (songs || []).filter((song) => song && song.id);
+  const trendingRaw: Song[] = trendingRes.data || [];
+  const newRaw: Song[] = newRes.data || [];
 
-  // 🖼️ Add signed cover URLs (SAFE)
-  const addSignedUrls = async (songs: any[]) => {
+  // 🔥 CLEAN DATA
+  const sanitizeSongs = (songs: Song[]) =>
+    songs.filter((song) => song && song.id);
+
+  // 🖼️ OPTIMIZED SIGNED URL (LIMITED)
+  const addSignedUrls = async (songs: Song[]) => {
     return Promise.all(
-      (songs || []).map(async (song) => {
-        if (!song?.cover_url) {
+      songs.slice(0, 12).map(async (song) => { // 🔥 limit to 12 max
+        if (!song.cover_url) {
           return { ...song, cover_signed_url: null };
         }
 
@@ -73,13 +85,18 @@ export default async function HomePage() {
     addSignedUrls(sanitizeSongs(newRaw)),
   ]);
 
+  // ⚠️ OPTIONAL DEBUG
+  if (!trending.length && !newReleases.length) {
+    console.warn("⚠️ No songs returned from RPC");
+  }
+
   return (
     <div className="relative">
 
-      {/* 🔥 GLOBAL BACKGROUND GRADIENT */}
+      {/* 🔥 BACKGROUND */}
       <div className="pointer-events-none absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-purple-900/40 to-transparent" />
 
-      {/* 🎧 MAIN CONTENT */}
+      {/* 🎧 UI */}
       <HomeClient
         trending={trending}
         newReleases={newReleases}
