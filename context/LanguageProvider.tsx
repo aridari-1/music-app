@@ -5,6 +5,7 @@ import {
   useContext,
   useMemo,
   useState,
+  useEffect,
   type ReactNode,
 } from "react";
 import { translations } from "@/lib/i18n";
@@ -13,7 +14,7 @@ type Lang = "en" | "fr";
 
 type LanguageContextType = {
   lang: Lang;
-  setLang: React.Dispatch<React.SetStateAction<Lang>>;
+  setLang: (lang: Lang) => void;
   t: (typeof translations)["en"];
 };
 
@@ -24,7 +25,21 @@ export function LanguageProvider({
 }: {
   children: ReactNode;
 }) {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLangState] = useState<Lang>("en");
+
+  // 🔥 LOAD FROM LOCALSTORAGE
+  useEffect(() => {
+    const saved = localStorage.getItem("lang") as Lang | null;
+    if (saved === "en" || saved === "fr") {
+      setLangState(saved);
+    }
+  }, []);
+
+  // 🔥 SAVE TO LOCALSTORAGE
+  const setLang = (newLang: Lang) => {
+    setLangState(newLang);
+    localStorage.setItem("lang", newLang);
+  };
 
   const value = useMemo(
     () => ({
