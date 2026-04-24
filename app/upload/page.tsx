@@ -158,6 +158,7 @@ export default function UploadPage() {
         <option>Rumba</option>
         <option>Drill</option>
         <option>Maimouna</option>
+          <option>Trap</option>
       </select>
 
       {/* AUDIO */}
