@@ -18,6 +18,9 @@ body {
 /* 🔥 SMOOTH SCROLL */
 html {
   scroll-behavior: smooth;
+
+  /* 🔥 FIX NAV OVERLAP (VERY IMPORTANT) */
+  scroll-padding-top: 80px;
 }
 
 /* 📱 MOBILE & TOUCH OPTIMIZATION */
@@ -25,6 +28,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
+
+  /* 🔥 PROTECT FROM BOTTOM NAV */
+  padding-bottom: 140px;
 }
 
 /* 🚫 LOCK SCROLL (USED FOR MOBILE MENU) */
@@ -161,4 +167,9 @@ a {
 img {
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/* 🔥 PREVENT NAV OVERLAY CLICK BUGS */
+header {
+  touch-action: manipulation;
 }

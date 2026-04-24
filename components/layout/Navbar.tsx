@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/context/LanguageProvider";
@@ -10,6 +11,7 @@ import { useLanguage } from "@/context/LanguageProvider";
 export default function Navbar() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const pathname = usePathname();
 
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -24,14 +26,29 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 🔥 LOCK BODY SCROLL WHEN MENU OPEN
+  // 🔥 LOCK BODY SCROLL
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = "";
     }
   }, [open]);
+
+  // 🔥 CLOSE MENU ON ROUTE CHANGE
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // 🔥 CLOSE WITH ESC KEY
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
 
   return (
     <>
@@ -149,18 +166,17 @@ export default function Navbar() {
           <LanguageSwitcher />
 
           {user ? (
-            <Link href="/account" onClick={() => setOpen(false)}>
+            <Link href="/account">
               {t.account}
             </Link>
           ) : (
             <>
-              <Link href="/auth/login" onClick={() => setOpen(false)}>
+              <Link href="/auth/login">
                 {t.login}
               </Link>
 
               <Link
                 href="/auth/signup"
-                onClick={() => setOpen(false)}
                 className="bg-white text-black px-6 py-3 rounded-full"
               >
                 {t.signup}
