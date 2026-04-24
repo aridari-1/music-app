@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
 import PlayButton from "@/components/ui/PlayButton";
 import BuyButton from "@/components/ui/BuyButton";
+import ShareSongButton from "@/components/ui/ShareSongButton"; // ✅ ADDED
 import Link from "next/link";
 
 export default async function SongPage({
@@ -150,6 +151,14 @@ export default async function SongPage({
               }}
             />
           )}
+
+          {/* 🔥 SHARE BUTTON (ADDED) */}
+          <div className="pt-2 flex justify-center md:justify-start">
+            <ShareSongButton
+              songId={song.id}
+              title={song.title}
+            />
+          </div>
 
           {/* 🔒 GUEST MESSAGE */}
           {!owned && (

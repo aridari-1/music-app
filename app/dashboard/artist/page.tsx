@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/supabase/admin";
+import ShareSongButton from "@/components/ui/ShareSongButton"; // ✅ ADDED
 import Link from "next/link";
 
 export default async function ArtistDashboard() {
@@ -46,7 +47,7 @@ export default async function ArtistDashboard() {
 
   const mySongIds = songs?.map((s) => s.id) || [];
 
-  // 💰 Purchases (IMPORTANT FIX)
+  // 💰 Purchases
   const { data: purchases } = await supabase
     .from("purchases")
     .select("artist_amount, payout_status, song_id")
@@ -106,11 +107,11 @@ export default async function ArtistDashboard() {
       {/* 💰 STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
-        <StatCard title="Total Earnings" value={`$${totalEarnings.toFixed(2)}`} />
+        <StatCard title="Total Earnings" value={`${totalEarnings.toFixed(2)} XOF`} />
 
-        <StatCard title="Pending Payout" value={`$${pendingEarnings.toFixed(2)}`} />
+        <StatCard title="Pending Payout" value={`${pendingEarnings.toFixed(2)} XOF`} />
 
-        <StatCard title="Paid Earnings" value={`$${paidEarnings.toFixed(2)}`} />
+        <StatCard title="Paid Earnings" value={`${paidEarnings.toFixed(2)} XOF`} />
 
         <StatCard title="Total Sales" value={totalSales} />
 
@@ -149,14 +150,20 @@ export default async function ArtistDashboard() {
                 />
 
                 {/* INFO */}
-                <div className="p-4">
+                <div className="p-4 space-y-3">
                   <p className="font-semibold">
                     {song.title}
                   </p>
 
                   <p className="text-sm text-white/60">
-                    ${song.price}
+                    {song.price} XOF
                   </p>
+
+                  {/* 🔥 SHARE BUTTON */}
+                  <ShareSongButton
+                    songId={song.id}
+                    title={song.title}
+                  />
                 </div>
               </div>
             ))}

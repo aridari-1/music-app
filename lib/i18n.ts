@@ -49,6 +49,11 @@ popular: "Popular",
 pro: "Pro",
 exclusive: "Exclusive",
 
+//SHARE
+share: "Share",
+linkCopied: "Link copied",
+listenOnNaluma: "Listen on Naluma",
+
     // SONG
     buy: "Buy",
     play: "Play",
@@ -143,6 +148,11 @@ basic: "Basique",
 popular: "Populaire",
 pro: "Pro",
 exclusive: "Exclusif",
+
+//SHARE
+share: "Partager",
+linkCopied: "Lien copié",
+listenOnNaluma: "Écouter sur Naluma",
 
     // SONG
     buy: "Acheter",
