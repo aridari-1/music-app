@@ -3,8 +3,39 @@ import AppShell from "@/components/layout/AppShell";
 import { LanguageProvider } from "@/context/LanguageProvider";
 
 export const metadata = {
-  title: "Naluma",
+  title: "Naluma Music",
   description: "Discover and own music directly from artists",
+
+  // 🔥 FAVICON + APP ICONS
+  icons: {
+    icon: "/icon.png",          // browser tab
+    shortcut: "/icon.png",
+    apple: "/icon.png",         // iPhone home screen
+  },
+
+  // 🔥 WHEN SHARING LINKS (VERY IMPORTANT)
+  openGraph: {
+    title: "Naluma Music",
+    description: "Discover and own music directly from artists",
+    url: "https://www.nalumamusic.com",
+    siteName: "Naluma Music",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+      },
+    ],
+    type: "website",
+  },
+
+  // 🔥 TWITTER / X PREVIEW
+  twitter: {
+    card: "summary_large_image",
+    title: "Naluma Music",
+    description: "Discover and own music directly from artists",
+    images: ["/icon.png"],
+  },
 };
 
 export default function RootLayout({
@@ -35,8 +66,8 @@ export default function RootLayout({
         {/* 🧠 APP STRUCTURE */}
         <LanguageProvider>
           <AppShell>
-            {/* IMPORTANT: NO z-10 HERE (prevents nav conflicts) */}
-            <div className="relative">
+            {/* 🔥 FIX NAV OVERLAP */}
+            <div className="relative pt-16">
               {children}
             </div>
           </AppShell>

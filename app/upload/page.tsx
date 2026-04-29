@@ -32,8 +32,9 @@ export default function UploadPage() {
       setLoading(true);
       setMessage("");
 
-      if (!price) {
-        setMessage(t.selectPrice || "Select a price");
+      // 🔥 FULL VALIDATION
+      if (!title || !price || !genre || !audio || !cover) {
+        setMessage("Please fill all fields");
         return;
       }
 
@@ -41,8 +42,8 @@ export default function UploadPage() {
       formData.append("title", title);
       formData.append("price", String(price));
       formData.append("genre", genre);
-      if (audio) formData.append("audio", audio);
-      if (cover) formData.append("cover", cover);
+      formData.append("audio", audio);
+      formData.append("cover", cover);
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -52,11 +53,18 @@ export default function UploadPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.error || t.uploadFailed || "Upload failed");
+        // 🔥 HANDLE ARTIST NOT SETUP
+        if (data.error?.includes("artist profile")) {
+          setMessage("Please complete your artist profile first");
+        } else {
+          setMessage(data.error || t.uploadFailed || "Upload failed");
+        }
         return;
       }
 
       setMessage(t.uploadSuccess || "Song uploaded successfully");
+
+      // 🔄 RESET FORM
       setTitle("");
       setPrice(null);
       setGenre("");
@@ -65,6 +73,7 @@ export default function UploadPage() {
 
       if (audioRef.current) audioRef.current.value = "";
       if (coverRef.current) coverRef.current.value = "";
+
     } catch {
       setMessage(t.error || "Something went wrong");
     } finally {
@@ -113,22 +122,18 @@ export default function UploadPage() {
                     : "bg-white/5 border-white/10 hover:bg-white/10"
                 }`}
               >
-                {/* GLOW */}
                 {active && (
                   <div className="absolute inset-0 rounded-2xl bg-white/20 blur-xl opacity-40" />
                 )}
 
-                {/* LABEL */}
                 <p className="text-xs opacity-70">
                   {t[p.label] || p.label}
                 </p>
 
-                {/* PRICE */}
                 <p className="text-xl font-semibold mt-1">
                   {p.value} XOF
                 </p>
 
-                {/* BADGE */}
                 {p.highlight && (
                   <span className="absolute top-2 right-2 text-[10px] px-2 py-1 rounded-full bg-purple-500 text-white">
                     {t.mostPopular || "Most Popular"}
@@ -158,18 +163,20 @@ export default function UploadPage() {
         <option>Rumba</option>
         <option>Drill</option>
         <option>Maimouna</option>
-          <option>Trap</option>
+        <option>Trap</option>
       </select>
 
       {/* AUDIO */}
       <label className="block mb-4 cursor-pointer">
         <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center hover:bg-white/10 transition">
-          {audio ? audio.name : (t.selectAudio || "Select audio file")}
+          {audio
+            ? audio.name
+            : "Select audio file (.mp3, .wav, .m4a)"}
         </div>
         <input
           ref={audioRef}
           type="file"
-          accept="audio/*"
+          accept=".mp3,.wav,.m4a,.aac,audio/*"
           onChange={(e) => setAudio(e.target.files?.[0] || null)}
           className="hidden"
         />
