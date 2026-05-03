@@ -12,12 +12,12 @@ export async function POST(req: Request) {
 
   try {
     // 🔐 VERIFY SIGNATURE
-    const body = await req.text();
+    const rawBody = await req.text();
     const signature = req.headers.get("x-paystack-signature");
 
     const hash = crypto
       .createHmac("sha512", PAYSTACK_SECRET_KEY)
-      .update(body)
+      .update(rawBody)
       .digest("hex");
 
     if (!signature || hash !== signature) {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid signature", { status: 401 });
     }
 
-    const event = JSON.parse(body);
+    const event = JSON.parse(rawBody);
 
     // 🎯 ONLY HANDLE SUCCESS EVENTS
     if (event?.event !== "charge.success") {
@@ -39,8 +39,11 @@ export async function POST(req: Request) {
     const paidAt = payment?.paid_at;
     const metadata = payment?.metadata || {};
 
+    // ✅ OPTION A FIX (match init file)
     const userId = metadata.userId;
     const songId = metadata.songId;
+
+    console.log("📦 METADATA:", metadata);
 
     if (!reference || status !== "success" || !paidAt || !userId || !songId) {
       console.error("❌ Invalid payload", {
@@ -70,9 +73,9 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid song", { status: 400 });
     }
 
-    // 💰 PAYSTACK RETURNS SMALLEST UNIT
-    const paidAmount = Number(payment.amount); // e.g. 10000
-    const expectedAmount = Math.round(Number(song.price) * 100); // e.g. 100 * 100 = 10000
+    // 💰 VERIFY AMOUNT (Paystack sends smallest unit)
+    const paidAmount = Number(payment.amount);
+    const expectedAmount = Math.round(Number(song.price) * 100);
 
     if (
       Number.isNaN(paidAmount) ||
@@ -87,16 +90,28 @@ export async function POST(req: Request) {
       return new NextResponse("Amount mismatch", { status: 400 });
     }
 
-    // 🚀 PROCESS PURCHASE (STORE REAL XOF VALUE)
+    // 🔒 PREVENT DUPLICATE PURCHASES
+    const { data: existingPurchase } = await adminClient
+      .from("purchases")
+      .select("id")
+      .eq("reference", reference)
+      .maybeSingle();
+
+    if (existingPurchase) {
+      console.log("⚠️ Duplicate webhook ignored:", reference);
+      return NextResponse.json({ received: true });
+    }
+
+    // 🚀 PROCESS PURCHASE (via RPC)
     const { error: rpcError } = await adminClient.rpc("process_purchase", {
       p_user_id: userId,
       p_song_id: songId,
       p_reference: reference,
-      p_amount: Number(song.price), // ✅ store human-readable XOF
+      p_amount: Number(song.price),
     });
 
     if (rpcError) {
-      console.error("❌ RPC error:", rpcError.message);
+      console.error("❌ RPC error:", rpcError);
       return new NextResponse("Processing failed", { status: 500 });
     }
 
