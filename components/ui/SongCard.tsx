@@ -57,7 +57,7 @@ export default function SongCard({
       >
         {/* 🔥 ACTIVE GLOW */}
         <div
-          className={`absolute inset-0 rounded-2xl transition duration-500 ${
+          className={`absolute inset-0 rounded-2xl transition duration-500 pointer-events-none ${
             isActive
               ? "bg-white/10 blur-xl opacity-100"
               : "opacity-0 group-hover:opacity-100"
@@ -67,7 +67,7 @@ export default function SongCard({
         {/* 🖼️ COVER */}
         <div
           onClick={goToSong}
-          className="relative overflow-hidden rounded-2xl cursor-pointer"
+          className="relative overflow-hidden rounded-2xl cursor-pointer z-10"
         >
           <img
             src={song.cover_signed_url || "/placeholder.png"}
@@ -78,8 +78,9 @@ export default function SongCard({
           {/* ▶ PLAY BUTTON */}
           {owned && (
             <button
+              type="button"
               onClick={handlePlayToggle}
-              className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition"
+              className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition z-20"
             >
               <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-xl">
                 {playerLoading && isCurrent
@@ -93,7 +94,7 @@ export default function SongCard({
 
           {/* 🔊 EQUALIZER */}
           {isActive && (
-            <div className="absolute top-3 left-3 player-eq">
+            <div className="absolute top-3 left-3 player-eq z-20">
               <span />
               <span />
               <span />
@@ -102,22 +103,23 @@ export default function SongCard({
         </div>
 
         {/* 🎵 INFO */}
-        <div className="mt-3 px-1 space-y-1">
+        <div className="relative z-20 mt-3 px-1 space-y-1">
           {/* TITLE */}
-          <p
+          <button
+            type="button"
             onClick={goToSong}
-            className={`text-[14px] sm:text-[15px] font-semibold leading-snug cursor-pointer ${
+            className={`text-[14px] sm:text-[15px] font-semibold leading-snug cursor-pointer text-left transition ${
               isActive ? "text-white" : "text-white/90"
             }`}
           >
             {song.title}
-          </p>
+          </button>
 
           {/* 🎤 ARTIST */}
           {song.artist_id && (
             <Link
               href={`/artist/${song.artist_id}`}
-              className="text-sm text-white/60 hover:text-white transition block"
+              className="text-sm text-white/60 hover:text-white transition block relative z-30"
             >
               {song.artist_name || "Unknown artist"}
             </Link>
@@ -132,10 +134,7 @@ export default function SongCard({
 
           {/* 💰 BUY BUTTON */}
           {!owned && (
-            <div
-              className="mt-3"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="mt-3 relative z-30">
               <BuyButton
                 songId={song.id}
                 price={song.price}
