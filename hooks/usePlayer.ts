@@ -181,14 +181,7 @@ export default create<PlayerState>((set, get) => {
       try {
         set({ loading: true, error: null });
 
-        // 🔥 BLOCK GUEST / NOT OWNED
-        if (!song?.is_owned) {
-          set({
-            loading: false,
-            error: "You need to purchase this song to play it.",
-          });
-          return;
-        }
+       
 
         if (queue && queue.length > 0) {
           const idx = queue.findIndex((s) => s.id === song.id);
