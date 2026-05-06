@@ -114,7 +114,7 @@ export async function POST(req: Request) {
           amount, // ✅ CORRECT
           currency: "XOF",
           reference,
-          callback_url: `${SITE_URL}/api/paystack/verify`,
+         callback_url: `${SITE_URL}/payment/processing?reference=${reference}`,
           metadata: {
             userId: user.id,
             songId: song.id,

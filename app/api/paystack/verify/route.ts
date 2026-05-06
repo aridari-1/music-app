@@ -1,71 +1,41 @@
 import { NextResponse } from "next/server";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+import { adminClient } from "@/lib/supabase/admin";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const reference = searchParams.get("reference");
-
-  if (!reference) {
-    return NextResponse.redirect(
-      `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-        "Missing payment reference."
-      )}`
-    );
-  }
-
-  if (!PAYSTACK_SECRET_KEY) {
-    return NextResponse.redirect(
-      `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-        "Payment configuration error."
-      )}`
-    );
-  }
-
   try {
-    // UX route only: verify status with Paystack, but DO NOT write to DB here.
-    const res = await fetch(
-      `https://api.paystack.co/transaction/verify/${reference}`,
-      {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        },
-        cache: "no-store",
-      }
-    );
+    const { searchParams } = new URL(req.url);
+    const reference = searchParams.get("reference");
 
-    if (!res.ok) {
-      return NextResponse.redirect(
-        `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-          "Unable to verify payment right now."
-        )}`
-      );
+    if (!reference) {
+      return NextResponse.json({
+        success: false,
+      });
     }
 
-    const payload = await res.json();
-    const status = payload?.data?.status;
+    // 🔎 CHECK YOUR DATABASE (NOT PAYSTACK)
+    const { data, error } = await adminClient
+      .from("purchases")
+      .select("id")
+      .eq("reference", reference)
+      .maybeSingle();
 
-    if (status === "success") {
-      return NextResponse.redirect(
-        `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-          "Payment successful. Your library is updating."
-        )}`
-      );
+    if (error) {
+      console.error("VERIFY DB ERROR:", error.message);
+
+      return NextResponse.json({
+        success: false,
+      });
     }
 
-    return NextResponse.redirect(
-      `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-        "Payment was not completed."
-      )}`
-    );
+    return NextResponse.json({
+      success: !!data,
+    });
+
   } catch (error) {
-    console.error("PAYSTACK VERIFY ERROR:", error);
+    console.error("VERIFY ERROR:", error);
 
-    return NextResponse.redirect(
-      `${SITE_URL}/dashboard/buyer?message=${encodeURIComponent(
-        "Payment verification failed."
-      )}`
-    );
+    return NextResponse.json({
+      success: false,
+    });
   }
 }

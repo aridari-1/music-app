@@ -36,23 +36,23 @@ export async function POST(req: Request) {
 
     const reference = payment?.reference;
     const status = payment?.status;
-    const paidAt = payment?.paid_at;
     const metadata = payment?.metadata || {};
 
-    // ✅ OPTION A FIX (match init file)
+    // ✅ Matches init metadata
     const userId = metadata.userId;
     const songId = metadata.songId;
 
     console.log("📦 METADATA:", metadata);
 
-    if (!reference || status !== "success" || !paidAt || !userId || !songId) {
+    // ✅ Do NOT require paid_at because Wave/Paystack can be async
+    if (!reference || status !== "success" || !userId || !songId) {
       console.error("❌ Invalid payload", {
         reference,
         status,
-        paidAt,
         userId,
         songId,
       });
+
       return new NextResponse("Invalid payload", { status: 400 });
     }
 
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid song", { status: 400 });
     }
 
-    // 💰 VERIFY AMOUNT (Paystack sends smallest unit)
+    // 💰 VERIFY AMOUNT
     const paidAmount = Number(payment.amount);
     const expectedAmount = Math.round(Number(song.price) * 100);
 
@@ -87,22 +87,28 @@ export async function POST(req: Request) {
         expectedAmount,
         songPrice: song.price,
       });
+
       return new NextResponse("Amount mismatch", { status: 400 });
     }
 
     // 🔒 PREVENT DUPLICATE PURCHASES
-    const { data: existingPurchase } = await adminClient
+    const { data: existingPurchase, error: existingError } = await adminClient
       .from("purchases")
       .select("id")
       .eq("reference", reference)
       .maybeSingle();
+
+    if (existingError) {
+      console.error("❌ Existing purchase check failed:", existingError.message);
+      return new NextResponse("Purchase check failed", { status: 500 });
+    }
 
     if (existingPurchase) {
       console.log("⚠️ Duplicate webhook ignored:", reference);
       return NextResponse.json({ received: true });
     }
 
-    // 🚀 PROCESS PURCHASE (via RPC)
+    // 🚀 PROCESS PURCHASE THROUGH RPC
     const { error: rpcError } = await adminClient.rpc("process_purchase", {
       p_user_id: userId,
       p_song_id: songId,
@@ -113,6 +119,21 @@ export async function POST(req: Request) {
     if (rpcError) {
       console.error("❌ RPC error:", rpcError);
       return new NextResponse("Processing failed", { status: 500 });
+    }
+
+    // 🛟 EXTRA SAFETY: ENSURE SONG IS UNLOCKED
+    const { error: libraryError } = await adminClient
+      .from("library")
+      .insert({
+        user_id: userId,
+        song_id: songId,
+      });
+
+    if (
+      libraryError &&
+      !libraryError.message.toLowerCase().includes("duplicate")
+    ) {
+      console.error("❌ Library fallback failed:", libraryError.message);
     }
 
     console.log("✅ Purchase processed successfully", {
