@@ -117,7 +117,6 @@ export default function SongCard({
           {song.artist_id && (
             <Link
               href={`/artist/${song.artist_id}`}
-              onClick={(e) => e.stopPropagation()}
               className="text-sm text-white/60 hover:text-white transition block"
             >
               {song.artist_name || "Unknown artist"}
@@ -126,16 +125,21 @@ export default function SongCard({
 
           {/* 🎼 GENRE */}
           {song.genre && (
-            <p className="text-xs text-white/50">{song.genre}</p>
+            <p className="text-xs text-white/50">
+              {song.genre}
+            </p>
           )}
 
-          {/* 💰 BUY BUTTON (FINAL FIX) */}
+          {/* 💰 BUY BUTTON */}
           {!owned && (
             <div
               className="mt-3"
-              onClick={(e) => e.stopPropagation()} // 🔥 CRITICAL FIX
+              onClick={(e) => e.stopPropagation()}
             >
-              <BuyButton songId={song.id} price={song.price} />
+              <BuyButton
+                songId={song.id}
+                price={song.price}
+              />
             </div>
           )}
         </div>
