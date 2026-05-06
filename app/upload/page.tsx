@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/context/LanguageProvider";
+import { createClient } from "@/lib/supabase/client";
 
 type PriceLabel = "basic" | "popular" | "pro" | "exclusive";
 
@@ -16,11 +17,14 @@ const PRICES: { value: number; label: PriceLabel; highlight?: boolean }[] = [
 export default function UploadPage() {
   const { t } = useLanguage();
 
+  const supabase = createClient();
+
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number | null>(null);
   const [genre, setGenre] = useState("");
   const [audio, setAudio] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -32,50 +36,115 @@ export default function UploadPage() {
       setLoading(true);
       setMessage("");
 
-      // 🔥 FULL VALIDATION
+      // ✅ VALIDATION
       if (!title || !price || !genre || !audio || !cover) {
         setMessage("Please fill all fields");
         return;
       }
 
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("price", String(price));
-      formData.append("genre", genre);
-      formData.append("audio", audio);
-      formData.append("cover", cover);
+      // 🔐 USER
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        // 🔥 HANDLE ARTIST NOT SETUP
-        if (data.error?.includes("artist profile")) {
-          setMessage("Please complete your artist profile first");
-        } else {
-          setMessage(data.error || t.uploadFailed || "Upload failed");
-        }
+      if (!user) {
+        setMessage("Please login first");
         return;
       }
 
+      // 🎤 GET ARTIST
+      const { data: artist, error: artistError } = await supabase
+        .from("artists")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (artistError || !artist) {
+        setMessage("Please complete your artist profile first");
+        return;
+      }
+
+      // 📁 SAFE FILE NAMES
+      const timestamp = Date.now();
+
+      const safeAudioName = audio.name.replace(/\s+/g, "-");
+      const safeCoverName = cover.name.replace(/\s+/g, "-");
+
+      const audioPath = `${artist.id}/${timestamp}-${safeAudioName}`;
+      const coverPath = `${artist.id}/${timestamp}-${safeCoverName}`;
+
+      // 🎵 DIRECT AUDIO UPLOAD (NO API ROUTE)
+      const { error: audioError } = await supabase.storage
+        .from("songs")
+        .upload(audioPath, audio, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: audio.type || "audio/mpeg",
+        });
+
+      if (audioError) {
+        setMessage(audioError.message || "Audio upload failed");
+        return;
+      }
+
+      // 🖼️ DIRECT COVER UPLOAD
+      const { error: coverError } = await supabase.storage
+        .from("covers")
+        .upload(coverPath, cover, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: cover.type || "image/jpeg",
+        });
+
+      if (coverError) {
+        setMessage(coverError.message || "Cover upload failed");
+        return;
+      }
+
+      // 💾 SAVE SONG METADATA ONLY
+      const { error: insertError } = await supabase
+        .from("songs")
+        .insert({
+          artist_id: artist.id,
+          title,
+          price,
+          genre,
+          audio_url: audioPath,
+          cover_url: coverPath,
+          is_published: true,
+        });
+
+      if (insertError) {
+        setMessage(insertError.message || "Song save failed");
+        return;
+      }
+
+      // ✅ SUCCESS
       setMessage(t.uploadSuccess || "Song uploaded successfully");
 
-      // 🔄 RESET FORM
+      // 🔄 RESET
       setTitle("");
       setPrice(null);
       setGenre("");
       setAudio(null);
       setCover(null);
 
-      if (audioRef.current) audioRef.current.value = "";
-      if (coverRef.current) coverRef.current.value = "";
+      if (audioRef.current) {
+        audioRef.current.value = "";
+      }
 
-    } catch {
-      setMessage(t.error || "Something went wrong");
+      if (coverRef.current) {
+        coverRef.current.value = "";
+      }
+
+    } catch (error) {
+      console.error("UPLOAD ERROR:", error);
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : t.error || "Something went wrong"
+      );
     } finally {
       setLoading(false);
     }
@@ -154,6 +223,7 @@ export default function UploadPage() {
         <option value="">
           {t.selectGenre || "Select genre"}
         </option>
+
         <option>Coupe Decale</option>
         <option>Rap Ivoire</option>
         <option>Zouglou</option>
@@ -173,6 +243,7 @@ export default function UploadPage() {
             ? audio.name
             : "Select audio file (.mp3, .wav, .m4a)"}
         </div>
+
         <input
           ref={audioRef}
           type="file"
@@ -185,8 +256,11 @@ export default function UploadPage() {
       {/* COVER */}
       <label className="block mb-6 cursor-pointer">
         <div className="p-4 rounded-2xl border border-white/10 bg-white/5 text-center hover:bg-white/10 transition">
-          {cover ? cover.name : (t.selectCover || "Select cover image")}
+          {cover
+            ? cover.name
+            : (t.selectCover || "Select cover image")}
         </div>
+
         <input
           ref={coverRef}
           type="file"
@@ -200,7 +274,8 @@ export default function UploadPage() {
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={handleUpload}
-        className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-600 font-medium text-lg"
+        disabled={loading}
+        className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-600 font-medium text-lg disabled:opacity-50"
       >
         {loading
           ? (t.uploading || "Uploading...")
@@ -213,6 +288,7 @@ export default function UploadPage() {
           {message}
         </p>
       )}
+
     </main>
   );
 }

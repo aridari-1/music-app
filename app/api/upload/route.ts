@@ -4,37 +4,36 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
-    const formData = await req.formData();
 
-    // 🎯 Fields
-    const title = String(formData.get("title") || "").trim();
-    const priceRaw = String(formData.get("price") || "").trim();
-    const price = Number(priceRaw);
-    const genre = String(formData.get("genre") || "").trim();
+    // 🔥 JSON BODY ONLY
+    const body = await req.json();
 
-    const audio = formData.get("audio") as File | null;
-    const cover = formData.get("cover") as File | null;
+    const title = String(body.title || "").trim();
+    const genre = String(body.genre || "").trim();
 
-    // ✅ Validation
+    const price = Number(body.price);
+
+    const audio_url = String(body.audio_url || "").trim();
+    const cover_url = String(body.cover_url || "").trim();
+
+    // ✅ VALIDATION
     if (
       !title ||
-      !priceRaw ||
-      Number.isNaN(price) ||
-      price <= 0 ||
       !genre ||
-      !audio ||
-      !cover
+      !audio_url ||
+      !cover_url ||
+      Number.isNaN(price) ||
+      price <= 0
     ) {
       return NextResponse.json(
         {
-          error:
-            "Missing or invalid title, price, genre, audio, or cover.",
+          error: "Missing or invalid fields.",
         },
         { status: 400 }
       );
     }
 
-    // 🔐 Auth
+    // 🔐 AUTH
     const {
       data: { user },
       error: userError,
@@ -47,7 +46,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 👤 Profile
+    // 👤 PROFILE
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id, role")
@@ -68,85 +67,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🎤 Get or create artist (SAFE)
-    let { data: artist } = await supabase
+    // 🎤 GET ARTIST
+    const { data: artist, error: artistError } = await supabase
       .from("artists")
-      .select("id, user_id")
+      .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!artist) {
-      const { data: newArtist, error } = await supabase
-        .from("artists")
-        .insert({
-          user_id: user.id,
-          name: user.email?.split("@")[0] || "Artist",
-        })
-        .select()
-        .single();
-
-      if (error || !newArtist) {
-        return NextResponse.json(
-          { error: "Artist creation failed." },
-          { status: 500 }
-        );
-      }
-
-      artist = newArtist;
-    }
-
-    // 🔒 FINAL SAFETY CHECK (fixes TS error)
-    if (!artist) {
+    if (artistError || !artist) {
       return NextResponse.json(
-        { error: "Artist still null after creation." },
-        { status: 500 }
+        { error: "Artist profile not found." },
+        { status: 400 }
       );
     }
 
-    // 📁 File paths
-    const timestamp = Date.now();
-
-    const audioPath = `${artist.id}/${timestamp}-${audio.name.replace(/\s+/g, "-")}`;
-    const coverPath = `${artist.id}/${timestamp}-${cover.name.replace(/\s+/g, "-")}`;
-
-    // 🎵 Upload audio
-    const { error: audioError } = await supabase.storage
-      .from("songs")
-      .upload(audioPath, audio, {
-        contentType: audio.type || "audio/mpeg",
-      });
-
-    if (audioError) {
-      return NextResponse.json(
-        { error: `Audio upload failed: ${audioError.message}` },
-        { status: 500 }
-      );
-    }
-
-    // 🖼️ Upload cover
-    const { error: coverError } = await supabase.storage
-      .from("covers")
-      .upload(coverPath, cover, {
-        contentType: cover.type || "image/jpeg",
-      });
-
-    if (coverError) {
-      return NextResponse.json(
-        { error: `Cover upload failed: ${coverError.message}` },
-        { status: 500 }
-      );
-    }
-
-    // 💾 Insert song
+    // 💾 INSERT SONG ONLY
     const { data: insertedSong, error: insertError } = await supabase
       .from("songs")
       .insert({
         artist_id: artist.id,
         title,
-        price,
         genre,
-        audio_url: audioPath,
-        cover_url: coverPath,
+        price,
+        audio_url,
+        cover_url,
         is_published: true,
       })
       .select()
@@ -154,19 +98,20 @@ export async function POST(req: Request) {
 
     if (insertError) {
       return NextResponse.json(
-        { error: `Song insert failed: ${insertError.message}` },
+        {
+          error: `Song insert failed: ${insertError.message}`,
+        },
         { status: 500 }
       );
     }
 
-    // ✅ Success
     return NextResponse.json({
       success: true,
       song: insertedSong,
     });
 
   } catch (error) {
-    console.error("UPLOAD ERROR:", error);
+    console.error("UPLOAD API ERROR:", error);
 
     return NextResponse.json(
       {
