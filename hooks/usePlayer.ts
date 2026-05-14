@@ -8,14 +8,16 @@ export type Song = {
   id: string;
   title: string;
 
-  genre?: string | null;
-  price?: number | null;
+  genre?: string;
+  price?: number;
 
-  cover_signed_url?: string | null;
+  cover_signed_url?: string;
 
-  artist_id?: string | null;
-  artist_name?: string | null;
+  // 🎤 Artist
+  artist_id?: string;
+  artist_name?: string;
 
+  // 🔐 Ownership
   is_owned?: boolean;
 };
 
@@ -27,9 +29,11 @@ type PlayArgs = {
 
 type PlayerState = {
   queue: Song[];
-  contextId: string | null;
+
+  contextId?: string;
 
   currentIndex: number;
+
   currentSong: Song | null;
   currentSongId: string | null;
 
@@ -51,726 +55,623 @@ type PlayerState = {
     contextId?: string
   ) => void;
 
-  play:(args:PlayArgs)=>Promise<void>;
-  toggle:(args:PlayArgs)=>Promise<void>;
+  play: (
+    args: PlayArgs
+  ) => Promise<void>;
 
-  pause:()=>void;
-  resume:()=>Promise<void>;
+  toggle: (
+    args: PlayArgs
+  ) => Promise<void>;
 
-  next:()=>Promise<void>;
-  prev:()=>Promise<void>;
+  pause: () => void;
 
-  seek:(time:number)=>void;
+  resume: () => Promise<void>;
 
-  setVolume:(v:number)=>void;
-  toggleMute:()=>void;
+  next: () => Promise<void>;
 
-  toggleShuffle:()=>void;
-  cycleRepeat:()=>void;
+  prev: () => Promise<void>;
 
-  clear:()=>void;
+  seek: (
+    time: number
+  ) => void;
+
+  setVolume: (
+    v: number
+  ) => void;
+
+  toggleMute: () => void;
+
+  toggleShuffle: () => void;
+
+  cycleRepeat: () => void;
+
+  clear: () => void;
 };
 
 function clamp(
-  n:number,
-  min:number,
-  max:number
-){
+  n: number,
+  min: number,
+  max: number
+) {
   return Math.max(
     min,
-    Math.min(max,n)
+    Math.min(max, n)
   );
 }
 
 export default create<PlayerState>(
-(set,get)=>{
+  (set, get) => {
+    let playRequestToken = 0;
 
-let playRequestToken=0;
+    const stopAndCleanup = () => {
+      const a = get().audio;
 
-const stopAndCleanup=()=>{
+      if (!a) return;
 
-const a=get().audio;
+      try {
+        a.pause();
+        a.src = "";
+        a.load();
+      } catch {}
 
-if(!a) return;
+      a.onended = null;
 
-try{
-a.pause();
-a.src="";
-a.load();
-}catch{}
+      set({
+        audio: null,
+        isPlaying: false,
+      });
+    };
 
-a.onended=null;
+    const attachEndedHandler = (
+      audio: HTMLAudioElement
+    ) => {
+      audio.onended = async () => {
+        const {
+          repeat,
+          queue,
+          currentIndex,
+          contextId,
+        } = get();
 
-set({
-audio:null,
-isPlaying:false,
-});
+        // 🔁 Repeat one
+        if (repeat === "one") {
+          try {
+            audio.currentTime = 0;
 
-};
+            await audio.play();
 
-const attachEndedHandler=(
-audio:HTMLAudioElement
-)=>{
+            set({
+              isPlaying: true,
+            });
+          } catch {
+            set({
+              isPlaying: false,
+            });
+          }
 
-audio.onended=async()=>{
+          return;
+        }
 
-const{
-repeat,
-queue,
-currentIndex,
-contextId
-}=get();
+        // 🚫 Empty queue
+        if (queue.length === 0) {
+          set({
+            isPlaying: false,
+          });
 
-if(repeat==="one"){
+          return;
+        }
 
-try{
+        const atEnd =
+          currentIndex >=
+          queue.length - 1;
 
-audio.currentTime=0;
+        // 🛑 End + repeat off
+        if (
+          atEnd &&
+          repeat === "off"
+        ) {
+          set({
+            isPlaying: false,
+          });
 
-await audio.play();
+          return;
+        }
 
-set({
-isPlaying:true
-});
+        // 🔁 Repeat all
+        if (
+          atEnd &&
+          repeat === "all"
+        ) {
+          await get().play({
+            song: queue[0],
+            queue,
+            contextId,
+          });
 
-}catch{
+          set({
+            currentIndex: 0,
+            currentSong: queue[0],
+            currentSongId:
+              queue[0].id,
+          });
 
-set({
-isPlaying:false
-});
+          return;
+        }
 
-}
+        // ⏭️ Next
+        await get().next();
+      };
+    };
 
-return;
+    const pickNextIndex = () => {
+      const {
+        queue,
+        currentIndex,
+        shuffle,
+      } = get();
 
-}
+      if (queue.length === 0)
+        return -1;
 
-if(queue.length===0){
+      if (!shuffle) {
+        return clamp(
+          currentIndex + 1,
+          0,
+          queue.length - 1
+        );
+      }
 
-set({
-isPlaying:false
-});
+      if (queue.length === 1)
+        return 0;
 
-return;
+      let next = currentIndex;
 
-}
+      while (
+        next === currentIndex
+      ) {
+        next = Math.floor(
+          Math.random() *
+            queue.length
+        );
+      }
 
-const atEnd=
-currentIndex>=
-queue.length-1;
+      return next;
+    };
 
-if(
-atEnd &&
-repeat==="off"
-){
+    const pickPrevIndex = () => {
+      const {
+        queue,
+        currentIndex,
+        audio,
+      } = get();
 
-set({
-isPlaying:false
-});
+      if (queue.length === 0)
+        return -1;
 
-return;
+      // 🎵 Spotify behavior
+      if (
+        audio &&
+        audio.currentTime > 3
+      ) {
+        return currentIndex;
+      }
 
-}
+      return clamp(
+        currentIndex - 1,
+        0,
+        queue.length - 1
+      );
+    };
 
-if(
-atEnd &&
-repeat==="all"
-){
+    return {
+      queue: [],
 
-await get().play({
-song:queue[0],
-queue,
-contextId
-});
+      contextId: undefined,
 
-set({
-currentIndex:0,
-currentSong:queue[0],
-currentSongId:
-queue[0].id
-});
+      currentIndex: -1,
 
-return;
+      currentSong: null,
+      currentSongId: null,
 
-}
+      audio: null,
 
-await get().next();
+      isPlaying: false,
+      loading: false,
+      error: null,
 
-};
+      volume: 1,
+      muted: false,
 
-};
+      shuffle: false,
+      repeat: "off",
 
-const pickNextIndex=()=>{
+      setQueue: (
+        queue,
+        startId,
+        contextId
+      ) => {
+        const idx = startId
+          ? queue.findIndex(
+              (s) =>
+                s.id === startId
+            )
+          : 0;
 
-const{
-queue,
-currentIndex,
-shuffle
-}=get();
+        set({
+          queue,
 
-if(
-queue.length===0
-) return -1;
+          contextId,
 
-if(!shuffle){
+          currentIndex:
+            idx >= 0 ? idx : 0,
+        });
+      },
 
-return clamp(
-currentIndex+1,
-0,
-queue.length-1
+      play: async ({
+        song,
+        queue,
+        contextId,
+      }) => {
+        const token =
+          ++playRequestToken;
+
+        try {
+          set({
+            loading: true,
+            error: null,
+          });
+
+          // 🎵 Update queue
+          if (
+            queue &&
+            queue.length > 0
+          ) {
+            const idx =
+              queue.findIndex(
+                (s) =>
+                  s.id === song.id
+              );
+
+            set({
+              queue,
+
+              contextId,
+
+              currentIndex:
+                idx >= 0
+                  ? idx
+                  : 0,
+            });
+          }
+
+          // 🛑 Stop previous audio
+          stopAndCleanup();
+
+          // 🔐 Stream request
+          const res =
+            await fetch(
+              "/api/stream",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  songId:
+                    song.id,
+                }),
+              }
+            );
+
+          const data =
+            await res.json();
+
+          if (!res.ok) {
+            set({
+              loading: false,
+
+              error:
+                data?.error ||
+                "Playback failed",
+            });
+
+            return;
+          }
+
+          // 🚫 Ignore old requests
+          if (
+            token !==
+            playRequestToken
+          )
+            return;
+
+          const a = new Audio(
+            data.url
+          );
+
+          // 🔊 Restore prefs
+          a.volume =
+            get().volume;
+
+          a.muted =
+            get().muted;
+
+          attachEndedHandler(a);
+
+          await a.play();
+
+          set({
+            audio: a,
+
+            currentSong:
+              song,
+
+            currentSongId:
+              song.id,
+
+            isPlaying: true,
+
+            loading: false,
+          });
+        } catch (e: any) {
+          set({
+            loading: false,
+
+            isPlaying: false,
+
+            error:
+              e?.message ||
+              "Playback error",
+          });
+        }
+      },
+
+      toggle: async ({
+        song,
+        queue,
+        contextId,
+      }) => {
+        const {
+          currentSongId,
+          isPlaying,
+        } = get();
+
+        // ⏯️ Same song
+        if (
+          currentSongId ===
+          song.id
+        ) {
+          if (isPlaying) {
+            get().pause();
+
+            return;
+          }
+
+          await get().resume();
+
+          return;
+        }
+
+        // ▶️ New song
+        await get().play({
+          song,
+          queue,
+          contextId,
+        });
+      },
+
+      pause: () => {
+        const a = get().audio;
+
+        if (!a) return;
+
+        a.pause();
+
+        set({
+          isPlaying: false,
+        });
+      },
+
+      resume: async () => {
+        const a = get().audio;
+
+        if (!a) return;
+
+        try {
+          await a.play();
+
+          set({
+            isPlaying: true,
+          });
+        } catch {
+          set({
+            isPlaying: false,
+          });
+        }
+      },
+
+      next: async () => {
+        const {
+          queue,
+          contextId,
+        } = get();
+
+        if (!queue.length)
+          return;
+
+        const nextIndex =
+          pickNextIndex();
+
+        if (nextIndex < 0)
+          return;
+
+        const nextSong =
+          queue[nextIndex];
+
+        set({
+          currentIndex:
+            nextIndex,
+
+          currentSong:
+            nextSong,
+
+          currentSongId:
+            nextSong.id,
+        });
+
+        await get().play({
+          song: nextSong,
+          queue,
+          contextId,
+        });
+      },
+
+      prev: async () => {
+        const {
+          queue,
+          currentIndex,
+          contextId,
+        } = get();
+
+        if (!queue.length)
+          return;
+
+        const prevIndex =
+          pickPrevIndex();
+
+        if (prevIndex < 0)
+          return;
+
+        const prevSong =
+          queue[prevIndex];
+
+        // ⏮️ Restart current
+        if (
+          prevIndex ===
+            currentIndex &&
+          get().audio
+        ) {
+          get().audio!.currentTime =
+            0;
+
+          return;
+        }
+
+        set({
+          currentIndex:
+            prevIndex,
+
+          currentSong:
+            prevSong,
+
+          currentSongId:
+            prevSong.id,
+        });
+
+        await get().play({
+          song: prevSong,
+          queue,
+          contextId,
+        });
+      },
+
+      seek: (time) => {
+        const a = get().audio;
+
+        if (
+          !a ||
+          !Number.isFinite(
+            time
+          )
+        )
+          return;
+
+        a.currentTime =
+          Math.max(0, time);
+      },
+
+      setVolume: (v) => {
+        const volume = clamp(
+          v,
+          0,
+          1
+        );
+
+        const a = get().audio;
+
+        if (a) {
+          a.volume = volume;
+        }
+
+        set({
+          volume,
+        });
+
+        // 🔊 Auto unmute
+        if (
+          volume > 0 &&
+          get().muted
+        ) {
+          if (a) {
+            a.muted = false;
+          }
+
+          set({
+            muted: false,
+          });
+        }
+      },
+
+      toggleMute: () => {
+        const a = get().audio;
+
+        const muted =
+          !get().muted;
+
+        if (a) {
+          a.muted = muted;
+        }
+
+        set({
+          muted,
+        });
+      },
+
+      toggleShuffle: () =>
+        set({
+          shuffle:
+            !get().shuffle,
+        }),
+
+      cycleRepeat: () => {
+        const r = get().repeat;
+
+        set({
+          repeat:
+            r === "off"
+              ? "all"
+              : r === "all"
+              ? "one"
+              : "off",
+        });
+      },
+
+      clear: () => {
+        stopAndCleanup();
+
+        set({
+          queue: [],
+
+          contextId:
+            undefined,
+
+          currentIndex: -1,
+
+          currentSong: null,
+          currentSongId: null,
+
+          isPlaying: false,
+          loading: false,
+          error: null,
+        });
+      },
+    };
+  }
 );
-
-}
-
-if(
-queue.length===1
-)return 0;
-
-let next=currentIndex;
-
-while(
-next===currentIndex
-){
-
-next=Math.floor(
-Math.random()*
-queue.length
-);
-
-}
-
-return next;
-
-};
-
-const pickPrevIndex=()=>{
-
-const{
-queue,
-currentIndex,
-audio
-}=get();
-
-if(
-queue.length===0
-)return -1;
-
-if(
-audio &&
-audio.currentTime>3
-){
-
-return currentIndex;
-
-}
-
-return clamp(
-currentIndex-1,
-0,
-queue.length-1
-);
-
-};
-
-return{
-
-queue:[],
-contextId:null,
-
-currentIndex:-1,
-
-currentSong:null,
-currentSongId:null,
-
-audio:null,
-
-isPlaying:false,
-loading:false,
-error:null,
-
-volume:1,
-muted:false,
-
-shuffle:false,
-repeat:"off",
-
-setQueue:(
-queue,
-startId,
-contextId
-)=>{
-
-const idx=
-startId
-?queue.findIndex(
-s=>s.id===startId
-)
-:0;
-
-set({
-
-queue,
-
-contextId:
-contextId ?? null,
-
-currentIndex:
-idx>=0
-?idx
-:0
-
-});
-
-},
-
-play:async({
-
-song,
-queue,
-contextId
-
-})=>{
-
-const token=
-++playRequestToken;
-
-try{
-
-set({
-loading:true,
-error:null
-});
-
-if(
-queue &&
-queue.length>0
-){
-
-const idx=
-queue.findIndex(
-s=>s.id===song.id
-);
-
-set({
-
-queue,
-
-contextId:
-contextId ??
-null,
-
-currentIndex:
-idx>=0
-?idx
-:0
-
-});
-
-}
-
-stopAndCleanup();
-
-const res=
-await fetch(
-"/api/stream",
-{
-method:"POST",
-body:JSON.stringify({
-songId:song.id
-})
-}
-);
-
-const data=
-await res.json();
-
-if(!res.ok){
-
-set({
-
-loading:false,
-
-error:
-data?.error ||
-"Playback failed"
-
-});
-
-return;
-
-}
-
-if(
-token !==
-playRequestToken
-)return;
-
-const a=
-new Audio(
-data.url
-);
-
-a.volume=
-get().volume;
-
-a.muted=
-get().muted;
-
-attachEndedHandler(
-a
-);
-
-await a.play();
-
-set({
-
-audio:a,
-
-currentSong:
-song,
-
-currentSongId:
-song.id,
-
-isPlaying:true,
-
-loading:false
-
-});
-
-}catch(e:any){
-
-set({
-
-loading:false,
-
-isPlaying:false,
-
-error:
-e?.message ||
-"Playback error"
-
-});
-
-}
-
-},
-
-toggle:async({
-
-song,
-queue,
-contextId
-
-})=>{
-
-const{
-currentSongId,
-isPlaying
-}=get();
-
-if(
-currentSongId===
-song.id
-){
-
-if(isPlaying){
-
-get().pause();
-
-return;
-
-}
-
-await get()
-.resume();
-
-return;
-
-}
-
-await get().play({
-
-song,
-queue,
-contextId
-
-});
-
-},
-
-pause:()=>{
-
-const a=
-get().audio;
-
-if(!a)return;
-
-a.pause();
-
-set({
-isPlaying:false
-});
-
-},
-
-resume:async()=>{
-
-const a=
-get().audio;
-
-if(!a)return;
-
-try{
-
-await a.play();
-
-set({
-isPlaying:true
-});
-
-}catch{
-
-set({
-isPlaying:false
-});
-
-}
-
-},
-
-next:async()=>{
-
-const{
-queue,
-contextId
-}=get();
-
-if(
-!queue.length
-)return;
-
-const nextIndex=
-pickNextIndex();
-
-if(
-nextIndex<0
-)return;
-
-const nextSong=
-queue[nextIndex];
-
-set({
-
-currentIndex:
-nextIndex,
-
-currentSong:
-nextSong,
-
-currentSongId:
-nextSong.id
-
-});
-
-await get().play({
-
-song:nextSong,
-queue,
-contextId
-
-});
-
-},
-
-prev:async()=>{
-
-const{
-queue,
-currentIndex,
-contextId
-}=get();
-
-if(
-!queue.length
-)return;
-
-const prevIndex=
-pickPrevIndex();
-
-if(
-prevIndex<0
-)return;
-
-const prevSong=
-queue[prevIndex];
-
-if(
-prevIndex===
-currentIndex &&
-get().audio
-){
-
-get()
-.audio!
-.currentTime=0;
-
-return;
-
-}
-
-set({
-
-currentIndex:
-prevIndex,
-
-currentSong:
-prevSong,
-
-currentSongId:
-prevSong.id
-
-});
-
-await get().play({
-
-song:prevSong,
-queue,
-contextId
-
-});
-
-},
-
-seek:(time)=>{
-
-const a=
-get().audio;
-
-if(
-!a ||
-!Number.isFinite(
-time
-)
-)return;
-
-a.currentTime=
-Math.max(
-0,
-time
-);
-
-},
-
-setVolume:(v)=>{
-
-const volume=
-clamp(v,0,1);
-
-const a=
-get().audio;
-
-if(a){
-
-a.volume=
-volume;
-
-}
-
-set({
-volume
-});
-
-if(
-volume>0 &&
-get().muted
-){
-
-if(a){
-a.muted=false;
-}
-
-set({
-muted:false
-});
-
-}
-
-},
-
-toggleMute:()=>{
-
-const a=
-get().audio;
-
-const muted=
-!get().muted;
-
-if(a){
-
-a.muted=
-muted;
-
-}
-
-set({
-muted
-});
-
-},
-
-toggleShuffle:()=>{
-
-set({
-
-shuffle:
-!get().shuffle
-
-});
-
-},
-
-cycleRepeat:()=>{
-
-const r=
-get().repeat;
-
-set({
-
-repeat:
-r==="off"
-?"all"
-:r==="all"
-?"one"
-:"off"
-
-});
-
-},
-
-clear:()=>{
-
-stopAndCleanup();
-
-set({
-
-queue:[],
-
-contextId:null,
-
-currentIndex:-1,
-
-currentSong:null,
-currentSongId:null,
-
-isPlaying:false,
-loading:false,
-error:null
-
-});
-
-}
-
-};
-
-});
